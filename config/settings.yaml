@@ -1,0 +1,4 @@
+--- 
+:modulepath: /etc/puppet/modules/
+:logfile: /var/log/gini.log
+:tftppath: /var/tftp/
