@@ -1,5 +1,5 @@
-class KarchesController < ApplicationController
-  active_scaffold :karch do |config|
+class MuxesController < ApplicationController
+  active_scaffold :mux do |config|
     config.label = "Kernel architectures"
     config.columns[:operatingsystem].label = "Operating system"
     config.columns = %w{ operatingsystem architecture }

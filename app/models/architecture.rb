@@ -1,9 +1,9 @@
 class Architecture < ActiveRecord::Base
-  has_many :karches, :dependent => :destroy
+  has_many :muxes, :dependent => :destroy
   
-  has_many :hosts,            :through => :karches
-  has_many :operatingsystems, :through => :karches
-  has_many :puppetclasses,    :through => :karches
+  has_many :hosts,            :through => :muxes
+  has_many :operatingsystems, :through => :muxes, :uniq =>true
+  has_many :puppetclasses,    :through => :muxes, :uniq =>true
   
   validates_uniqueness_of :name
   before_destroy :ensure_not_used

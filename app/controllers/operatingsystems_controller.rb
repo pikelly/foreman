@@ -11,7 +11,6 @@ class OperatingsystemsController < ApplicationController
     config.columns[:medias].form_ui  = :select
     config.columns[:name].description = "Operating System name, e.g. CentOS"
     config.columns[:major].description = "The OS major version e.g. 5"
-    config.columns[:architectures].description = "The allowed architectures for this host"
     config.columns[:medias].description = "Valid medias for this host"
     config.columns[:medias].label = "Installation medias"
     config.columns[:minor].description = "The OS minor version e.g. 3, leave blank if empty"

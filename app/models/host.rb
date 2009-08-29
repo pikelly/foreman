@@ -1,8 +1,8 @@
 class Host < Puppet::Rails::Host
-  belongs_to :karch
-  has_one    :architecture,    :through => :karch
-  has_one    :operatingsystem, :through => :karch
-  has_one    :puppetclass,     :through => :karch
+  belongs_to :mux
+  has_one    :architecture,    :through => :mux
+  has_one    :operatingsystem, :through => :mux
+  has_one    :puppetclass,     :through => :mux
   belongs_to :media
   belongs_to :model
   belongs_to :domain
@@ -28,7 +28,7 @@ class Host < Puppet::Rails::Host
     validates_uniqueness_of  :sp_mac, :allow_nil => true, :allow_blank => true
     validates_uniqueness_of  :sp_name, :sp_ip, :allow_blank => true, :allow_nil => true
     validates_format_of      :sp_name, :with => /.*-sp/, :allow_nil => true, :allow_blank => true
-    validates_presence_of    :architecture_id, :domain_id, :mac, :operatingsystem_id, :karch_id
+    validates_presence_of    :architecture_id, :domain_id, :mac, :operatingsystem_id, :mux_id
     validates_length_of      :root_pass, :minimum => 8,:too_short => 'should be 8 characters or more'
     validates_format_of      :mac,       :with => /([a-f0-9]{1,2}:){5}[a-f0-9]{1,2}/
       validates_format_of      :ip,        :with => /(\d{1,3}\.){3}\d{1,3}/
@@ -36,7 +36,7 @@ class Host < Puppet::Rails::Host
     validates_format_of      :sp_mac,    :with => /([a-f0-9]{1,2}:){5}[a-f0-9]{1,2}/, :allow_nil => true, :allow_blank => true
     validates_format_of      :sp_ip,     :with => /(\d{1,3}\.){3}\d{1,3}/, :allow_nil => true, :allow_blank => true
     validates_format_of      :serial,    :with => /[01],\d{3,}n\d/, :message => "should follow this format: 0,9600n8", :allow_blank => true, :allow_nil => true
-    validates_associated     :domain, :karch, :operatingsystem,  :architecture, :subnet,:media#, :user, :deployment, :model
+    validates_associated     :domain, :mux :operatingsystem,  :architecture, :subnet,:media#, :user, :deployment, :model
   end
 
   before_validation :normalize_addresses, :normalize_hostname

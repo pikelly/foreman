@@ -1,11 +1,11 @@
 class Operatingsystem < ActiveRecord::Base
-  has_many :karches, :dependent => :destroy
+  has_many :muxes, :dependent => :destroy
   has_many :medias
   has_and_belongs_to_many :ptables
   
-  has_many :hosts,         :through => :karches
-  has_many :architectures, :through => :karches, :uniq => true
-  has_many :puppetclasses, :through => :karches, :uniq => true
+  has_many :hosts,         :through => :muxes
+  has_many :architectures, :through => :muxes, :uniq => true
+  has_many :puppetclasses, :through => :muxes, :uniq => true
   
   validates_presence_of :major, :message => "Operating System version is required"
   validates_presence_of :name

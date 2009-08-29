@@ -13,12 +13,12 @@ class PopulateTables < ActiveRecord::Migration
     x86_64       = Architecture.find_by_name("x86_64")
     sparc        = Architecture.find_by_name("sparc")
     
-    pm_karch = Karch.create  :operatingsystem => centos_5,   :architecture => i386,   :puppetclass => puppetmaster
-    Karch.create  :operatingsystem => centos_5,   :architecture => i386,   :puppetclass => compute
-    Karch.create  :operatingsystem => centos_5,   :architecture => x86_64, :puppetclass => compute
-    Karch.create  :operatingsystem => solaris_8,  :architecture => sparc,  :puppetclass => compute
-    Karch.create  :operatingsystem => solaris_10, :architecture => x86_64, :puppetclass => compute
-    Karch.create  :operatingsystem => solaris_10, :architecture => sparc,  :puppetclass => compute
+    pm_mux = Mux.create  :operatingsystem => centos_5,   :architecture => i386,   :puppetclass => puppetmaster
+    Mux.create  :operatingsystem => centos_5,   :architecture => i386,   :puppetclass => compute
+    Mux.create  :operatingsystem => centos_5,   :architecture => x86_64, :puppetclass => compute
+    Mux.create  :operatingsystem => solaris_8,  :architecture => sparc,  :puppetclass => compute
+    Mux.create  :operatingsystem => solaris_10, :architecture => x86_64, :puppetclass => compute
+    Mux.create  :operatingsystem => solaris_10, :architecture => sparc,  :puppetclass => compute
     
     brs = Domain.create :name => "brs", :fullname => "Bristol", :dnsserver => "brssc001.eu.somewhere.com", :gateway => "wsus.vih.somewhre.com"
     vmware =Model.create  :name => "VMWare"
@@ -26,7 +26,7 @@ class PopulateTables < ActiveRecord::Migration
     test = Environment.create :name => "test"
     write test.errors.full_messages
     write Host.create(:name => "brsla001", :ip => "1.2.3.4", :mac => "1:2:3:4:5:6", :domain => brs, :environment => test,
-    :ptable => Ptable.find_by_name("default"), :media => Media.find(:first), :model => Model.find_by_name("VMWare"), :karch => pm_karch).errors.full_messages 
+    :ptable => Ptable.find_by_name("default"), :media => Media.find(:first), :model => Model.find_by_name("VMWare"), :mux => pm_mux).errors.full_messages 
   end
 
   def self.down

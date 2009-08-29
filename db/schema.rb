@@ -97,7 +97,7 @@ ActiveRecord::Schema.define(:version => 20090820162618) do
     t.text     "disk"
     t.datetime "installed_at"
     t.integer  "model_id"
-    t.integer  "hostgroup_id"
+    t.integer  "mux_id"
   end
 
   add_index "hosts", ["id"], :name => "index_hosts_on_id"
@@ -106,7 +106,7 @@ ActiveRecord::Schema.define(:version => 20090820162618) do
   add_index "hosts", ["puppet_status"], :name => "index_hosts_on_puppet_status"
   add_index "hosts", ["source_file_id"], :name => "index_hosts_on_source_file_id"
 
-  create_table "karches", :force => true do |t|
+  create_table "muxes", :force => true do |t|
     t.integer  "operatingsystem_id", :null => false
     t.integer  "architecture_id",    :null => false
     t.integer  "puppetclass_id"

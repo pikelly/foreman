@@ -12,7 +12,7 @@ ActionController::Routing::Routes.draw do |map|
   map.resources :reports, :active_scaffold => true
   map.resources :domains, :active_scaffold => true
   map.resources :operatingsystems, :active_scaffold => true
-  map.resources :karches,          :active_scaffold => true
+  map.resources :muxes,          :active_scaffold => true
   map.resources :medias, :active_scaffold => true
   map.resources :models, :active_scaffold => true
   map.resources :architectures, :active_scaffold => true
