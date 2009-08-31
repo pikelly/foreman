@@ -1,6 +1,14 @@
 require 'test_helper'
 
 class HostTest < ActiveSupport::TestCase
+  fixtures :operatingsystems, :domains, :puppetclasses
+  
+  def setup
+    @mux =  Mux.find_or_create_by_operatingsystem_id_and_architecture_id_and_puppetclass_id(
+         :operatingsystem => operatingsystems(:redhat5_4),
+         :architecture => architectures(:x86_64),
+         :puppetclass => puppetclasses(:one))  
+  end
   test "should not save without a hostname" do
     host = Host.new
     assert !host.save
@@ -24,8 +32,10 @@ class HostTest < ActiveSupport::TestCase
 
   test "should be able to save host" do
     host = Host.create :name => "myfullhost", :mac => "aabbecddeeff", :ip => "123.05.02.03",
-      :domain => Domain.find_or_create_by_name("company.com"), :operatingsystem => Operatingsystem.first,
-      :architecture => Architecture.first, :environment => Environment.first, :disk => "empty partition"
+      :domain => Domain.find_or_create_by_name("company.com"), 
+      :mux => Mux.find_or_create_by_operatingsystem_and_architecture(:operatingsystem => Operatingsystem.find_or_create_by_name_and_major("Centos", 5),
+                                                                     :architecture    => Architecture.find_or_create_by_name("i386")) ,
+      :environment => Environment.first
     puts host.errors.full_messages
     assert host.valid?
   end
@@ -44,23 +54,19 @@ class HostTest < ActiveSupport::TestCase
 
   test "should not save if both ptable and disk are not defined" do
     host = Host.create :name => "myfullhost", :mac => "aabbecddeeff", :ip => "123.05.02.03",
-      :domain => Domain.find_or_create_by_name("company.com"), :operatingsystem => Operatingsystem.first,
-      :architecture => Architecture.first, :environment => Environment.first
-    assert true unless $settings[:attended]
+      :domain => Domain.find_or_create_by_name("company.com"), :mux => @mux, :environment => Environment.first
     assert !host.valid?
   end
 
   test "should save if ptable is defined" do
     host = Host.create :name => "myfullhost", :mac => "aabbecddeeff", :ip => "123.05.02.03",
-      :domain => Domain.find_or_create_by_name("company.com"), :operatingsystem => Operatingsystem.first,
-      :architecture => Architecture.first, :environment => Environment.first, :ptable => Ptable.first
+      :domain => Domain.find_or_create_by_name("company.com"), :mux => @mux, :environment => Environment.first, :ptable => Ptable.first
     assert host.valid?
   end
 
   test "should save if disk is defined" do
     host = Host.create :name => "myfullhost", :mac => "aabbecddeeff", :ip => "123.05.02.03",
-      :domain => Domain.find_or_create_by_name("company.com"), :operatingsystem => Operatingsystem.first,
-      :architecture => Architecture.first, :environment => Environment.first, :disk => "aaa"
+      :domain => Domain.find_or_create_by_name("company.com"), :mux => @mux, :environment => Environment.first, :disk => "aaa"
     assert host.valid?
   end
 

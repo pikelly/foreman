@@ -218,24 +218,46 @@ class Host < Puppet::Rails::Host
   end
 
   def populateFieldsFromFacts
-    self.mac = fv(:macaddress)
-    self.ip = fv(:ipaddress) if ip.nil?
-    self.domain = Domain.find_or_create_by_name fv(:domain)
-    # On solaris architecture fact is harwareisa
-    if myarch=fv(:architecture) || fv(:hardwareisa)
-      self.arch=Architecture.find_or_create_by_name myarch
+    begin
+      self.mac = fv(:macaddress)
+      self.ip = fv(:ipaddress) if ip.nil?
+      self.domain = Domain.find_or_create_by_name fv(:domain)
+      # On solaris architecture fact is harwareisa
+      myarch=fv(:architecture) || fv(:hardwareisa)
+      arch=Architecture.find_or_create_by_name myarch unless myarch.empty?
+      
+      nameindicator = nil
+      os_name = fv(:operatingsystem)
+       if os_name == "Solaris"
+         os_major. os_minor = fv(:operatingsystemrelease).split(".")
+         nameindicator = "u"
+       else
+         os_major,os_minor  = fv(:lsbdistrelease).split(".")
+         os_minor = 1 unless os_minor
+         nameindicator = "l"
+       end
+       opsys   = Operatingsystem.find_or_create_by_name_and_major_and_minor os_name, os_major, os_minor, :nameindicator => nameindicator
+      
+      if self.name=~/...[ul]c/
+         puppetclass = Puppetclass.find_or_create_by_name("host-rd-compute")
+      else
+         puppetclass = Puppetclass.find_or_create_by_name("host-base")
+      end
+      
+      mux = Mux.create :puppetclass => puppetclass, :operatingsystem => opsys, :architecture => arch
+      
+      self.mux = mux
+      # by default, puppet doesn't store an env name in the database
+      env=fv(:environment) || "production"
+      self.environment = Environment.find_or_create_by_name env
+  
+      self.save
+    rescue Exception => e
+      logger.warn "failed to save #{self.name}: #{self.errors.full_messages}"
+      $stderr.puts $!
+      $stderr.puts e.to_s
+      $stderr.puts e.backtrace[0..1].join("\n")
     end
-    # by default, puppet doesnt store an env name in the database
-    env=fv(:environment) || "production"
-    self.environment = Environment.find_or_create_by_name env
-
-    os_name = fv(:operatingsystem)
-    if orel = fv(:lsbdistrelease) || fv(:operatingsystemrelease)
-      major, minor = orel.split(".")
-      self.os = Operatingsystem.find_or_create_by_name_and_major_and_minor os_name, major, minor
-    end
-    # again we are saving without validations as input is required (e.g. partition tables)
-    self.save_with_validation(perform_validation = false)
   end
 
   # Called by build link in the list

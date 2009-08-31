@@ -1,5 +1,18 @@
 # Read about fixtures at http://ar.rubyonrails.org/classes/Fixtures.html
 
+vih:
+    id: 1
+    name: vih.somewhere.com
+    dnsserver: vihsm001.eu.somewhare.com
+    gateway: wsus.vih.somewhere.com
+    fullname: Villach
+
+brs:
+    id: 2, 
+    name: brs.somewhere.com
+    dnsserver: brssm001.brs.somewhere.com
+    gateway: wsus.vih.somewhere.com
+    fullname: Bristol,
 # one:
 #   column: value
 #

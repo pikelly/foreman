@@ -1,10 +1,19 @@
 # Read about fixtures at http://ar.rubyonrails.org/classes/Fixtures.html
 
- one:
+centos5_3:
    name: centos
    major: 5
    minor: 3
 
+redhat5_3:
+   name: RedHat
+   major: 5
+   minor: 3
+   
+redhat5_4:
+   name: RedHat
+   major: 5
+   minor: 4
 #
 # two:
 #   column: value
