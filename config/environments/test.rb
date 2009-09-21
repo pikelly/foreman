@@ -26,3 +26,7 @@ config.action_mailer.delivery_method = :test
 # This is necessary if your schema can't be completely dumped by the schema dumper,
 # like if you have constraints or database-specific column types
 # config.active_record.schema_format = :sql
+
+# We HAVE to use an external cache store otherwise the tests do not work. This appears to be a 
+# thread synchronisation issue.
+config.cache_store = :mem_cache_store

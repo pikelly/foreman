@@ -6,7 +6,7 @@ class CreateMux < ActiveRecord::Migration
       t.references :puppetclass
       t.timestamps
     end
-    remove_column :puppetclasses, :operatingsystems_id
+    remove_column :puppetclasses, :operatingsystem_id
     
     remove_column :hosts, :architecture_id 
     remove_column :hosts, :operatingsystem_id
