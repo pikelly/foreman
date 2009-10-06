@@ -25,17 +25,23 @@ class ActiveRecord::Base
     )
   end
   private
-  def ensure_not_used
-    puts "Count is #{hosts.count}"
-    puts to_s
-    hosts.each do |host|
+  def ensure_not_used_by_hosts
+    for host in hosts
       self.errors.add_to_base(to_label + " is used by " + host.hostname)
     end
-    puts "good"
     unless errors.empty?
       logger.error "You may not destroy #{to_label} as it is in use!"
-      #raise ApplicationController::InvalidDeleteError.new, errors.full_messages.join("<br>")
-      puts "BAD"
+      false
+    else
+      true
+    end
+  end
+  def ensure_not_used_by_muxes
+    for mux in muxes
+      self.errors.add_to_base(to_label + " is used by " + mux.to_s )
+    end
+    unless errors.empty?
+      logger.error "You may not destroy #{to_label} as it is in use!"
       false
     else
       true

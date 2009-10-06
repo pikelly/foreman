@@ -12,7 +12,7 @@ brs:
     name: brs.somewhere.com
     dnsserver: brssm001.brs.somewhere.com
     gateway: wsus.vih.somewhere.com
-    fullname: Bristol,
+    fullname: Bristol
 # one:
 #   column: value
 #

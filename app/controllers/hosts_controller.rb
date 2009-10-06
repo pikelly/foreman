@@ -10,15 +10,15 @@ class HostsController < ApplicationController
     list.sorting = {:name => 'ASC' }
     config.actions.exclude :show
     config.columns[:architecture].form_ui  = :select
-    config.columns = [:name, :ip, :mac, :mux, :puppetclasses, :hostgroup, :environment, :media, :domain, :model, :root_pass, :serial, :puppetmaster, :ptable, :disk,
+    config.columns = [:name, :ip, :mac, :architecture, :operatingsystem, :hostgroup, :environment, :media, :domain, :model, :root_pass, :serial, :puppetmaster, :ptable, :disk,
                       :comment, :host_parameters]
     #config.columns[:architecture].form_ui  = :select
     config.columns[:media].form_ui  = :select
     config.columns[:hostgroup].form_ui  = :select
     config.columns[:domain].form_ui  = :select
-    config.columns[:puppetclass].form_ui  = :select
+    #config.columns[:puppetclass].form_ui  = :select
     config.columns[:environment].form_ui  = :select
-    config.columns[:mux].label = "OS and architecture"
+    #config.columns[:mux].label = "OS and architecture"
     config.columns[:ptable].form_ui  = :select
     #config.columns[:operatingsystem].form_ui  = :select
     config.columns[:fact_values].association.reverse = :host

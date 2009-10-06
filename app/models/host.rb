@@ -1,15 +1,14 @@
 class Host < Puppet::Rails::Host
-  belongs_to :mux
-  has_one    :architecture,    :through => :mux
-  has_one    :operatingsystem, :through => :mux
-  has_one    :puppetclass,     :through => :mux
+  belongs_to :architecture
+  belongs_to :operatingsystem
+  belongs_to :hostgroup
+  #has_many   :puppetclasses,     :through => :hostgroup
   belongs_to :media
   belongs_to :model
   belongs_to :domain
   belongs_to :environment
   belongs_to :subnet
   belongs_to :ptable
-  belongs_to :hostgroup
   has_many :reports, :dependent => :destroy
   has_many :host_parameters, :dependent => :destroy
 
@@ -28,7 +27,7 @@ class Host < Puppet::Rails::Host
     validates_uniqueness_of  :sp_mac, :allow_nil => true, :allow_blank => true
     validates_uniqueness_of  :sp_name, :sp_ip, :allow_blank => true, :allow_nil => true
     validates_format_of      :sp_name, :with => /.*-sp/, :allow_nil => true, :allow_blank => true
-    validates_presence_of    :domain_id, :mac, :operatingsystem_id, :environment_id, :mux_id
+    validates_presence_of    :domain_id, :mac, :operatingsystem_id, :environment_id, :mux_id, :architecture_id, :operatingsystem_id
     validates_length_of      :root_pass, :minimum => 8,:too_short => 'should be 8 characters or more'
     validates_format_of      :mac,       :with => /([a-f0-9]{1,2}:){5}[a-f0-9]{1,2}/
       validates_format_of      :ip,        :with => /(\d{1,3}\.){3}\d{1,3}/
@@ -89,7 +88,7 @@ class Host < Puppet::Rails::Host
     write_attribute(:puppetmaster, pm == ($settings[:puppet_server] || "puppet") ? nil : pm)
   end
 
-  #retuns fqdn of host puppetmaster
+  #returns fqdn of host puppetmaster
   def pm_fqdn
     puppetmaster == "puppet" ? "puppet.#{domain.name}" : "#{puppetmaster}"
   end
@@ -138,7 +137,7 @@ class Host < Puppet::Rails::Host
     if hostgroup.nil?
       return puppetclasses.collect {|c| c.name}
     else
-      return (hostgroup.puppetclasses.collect {|c| c.name} + puppetclasses.collect {|c| c.name}).uniq
+      return (hostgroup.puppetclasses.collect {|c| c.name}).uniq
     end
   end
 
@@ -200,7 +199,7 @@ class Host < Puppet::Rails::Host
         # If we don't (e.g. we never install the server via Foreman, we populate the fields from facts
         # TODO: if it was installed by Foreman and there is a mismatch,
         # we should probably send out an alert.
-        self.save_with_validation(perform_validation = false)
+        self.save_with_validation(false)
 
         # we want to import other information only if this host was never installed via Foreman
         installed_at.nil? ? self.populateFieldsFromFacts : true
@@ -219,23 +218,23 @@ class Host < Puppet::Rails::Host
 
   def populateFieldsFromFacts
     begin
-      self.mac    = fv(:macaddress)
-      self.ip     = fv(:ipaddress) if ip.nil?
-      self.domain = Domain.find_or_create_by_name fv(:domain)
-
+      self.mac             = fv(:macaddress)
+      self.ip              = fv(:ipaddress) if ip.nil?
+      self.domain          = Domain.find_or_create_by_name fv(:domain)
       # On solaris architecture fact is harwareisa
-      myarch      = fv(:architecture) || fv(:hardwareisa)
-      arch        = Architecture.find_or_create_by_name myarch unless myarch.empty?
-      opsys       = Operatingsystem.build_from_facts self
-      puppetclass = Puppetclass.build_from_facts self
+      myarch               = fv(:architecture) || fv(:hardwareisa)
+      self.architecture    = Architecture.find_or_create_by_name myarch unless myarch.empty?
+      self.operatingsystem = Operatingsystem.build_from_facts self
+      #self.hostgroup       = Hostgroup.build_from_facts self
 
-      self.mux    = Mux.create :puppetclass => puppetclass, :operatingsystem => opsys, :architecture => arch
+      self.hostgroup       = Hostgroup.find_or_create_by_name fv(:puppetclass) #TODO: This should read hostgroup
       
       # by default, puppet doesn't store an env name in the database
       env=fv(:environment) || "production"
       self.environment = Environment.find_or_create_by_name env
   
-      self.save
+      # Again we do not use validations as we can be sure that the ptable has not been set!!
+      self.save_with_validation(false)
     rescue Exception => e
       logger.warn "failed to save #{self.name}: #{self.errors.full_messages}"
       $stderr.puts $!
@@ -259,15 +258,15 @@ class Host < Puppet::Rails::Host
     self.save
   end
 
-  # this method accepts a puppets external node yaml output and generate a node in our setup
+  # This method accepts a puppets external node yaml output and generate a node in our setup
   # it is assumed that you already have the node (e.g. imported by one of the rack tasks)
   def importNode nodeinfo
     # puppet classes
     nodeinfo["classes"].each do |klass|
       if pc = Puppetclass.find_by_name(klass)
-        self.puppetclasses << pc unless puppetclasses.exists?(pc)
+        self.hostgroup.puppetclasses << pc unless self.hostgroup.puppetclasses.exists?(pc)
       else
-        logger.warn "Failed to import #{klass} for #{name}: doesn't exists in our database - ignoreing"
+        logger.warn "Failed to import #{klass} for #{name}: doesn't exists in our database - ignoring"
         $stderr.puts $!
       end
     end

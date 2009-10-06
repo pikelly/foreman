@@ -9,7 +9,7 @@
 #
 # It's strongly recommended to check this file into your version control system.
 
-ActiveRecord::Schema.define(:version => 20090920065522) do
+ActiveRecord::Schema.define(:version => 20090926095432) do
 
   create_table "architectures", :force => true do |t|
     t.string   "name",       :limit => 10, :default => "x86_64", :null => false
@@ -70,7 +70,7 @@ ActiveRecord::Schema.define(:version => 20090920065522) do
   end
 
   create_table "hosts", :force => true do |t|
-    t.string   "name",                                             :null => false
+    t.string   "name",                                                :null => false
     t.string   "ip"
     t.datetime "last_compile"
     t.datetime "last_freshcheck"
@@ -78,27 +78,29 @@ ActiveRecord::Schema.define(:version => 20090920065522) do
     t.datetime "updated_at"
     t.integer  "source_file_id"
     t.datetime "created_at"
-    t.string   "mac",             :limit => 17, :default => ""
-    t.string   "sp_mac",          :limit => 17, :default => ""
-    t.string   "sp_ip",           :limit => 15, :default => ""
-    t.string   "sp_name",                       :default => ""
-    t.string   "root_pass",       :limit => 64
-    t.string   "serial",          :limit => 12
+    t.string   "mac",                :limit => 17, :default => ""
+    t.string   "sp_mac",             :limit => 17, :default => ""
+    t.string   "sp_ip",              :limit => 15, :default => ""
+    t.string   "sp_name",                          :default => ""
+    t.string   "root_pass",          :limit => 64
+    t.string   "serial",             :limit => 12
     t.string   "puppetmaster"
-    t.integer  "puppet_status",                 :default => 0,     :null => false
+    t.integer  "puppet_status",                    :default => 0,     :null => false
     t.integer  "domain_id"
     t.integer  "environment_id"
     t.integer  "subnet_id"
     t.integer  "sp_subnet_id"
     t.integer  "ptable_id"
     t.integer  "media_id"
-    t.boolean  "build",                         :default => false
+    t.boolean  "build",                            :default => false
     t.text     "comment"
     t.text     "disk"
     t.datetime "installed_at"
     t.integer  "model_id"
     t.integer  "mux_id"
     t.integer  "hostgroup_id"
+    t.integer  "architecture_id"
+    t.integer  "operatingsystem_id"
   end
 
   add_index "hosts", ["domain_id"], :name => "host_domain_id_ix"

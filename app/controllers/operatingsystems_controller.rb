@@ -2,7 +2,7 @@ class OperatingsystemsController < ApplicationController
   helper :operatingsystem
   active_scaffold :operatingsystem do |config|
     config.label = "Operating systems"
-    config.columns = [:name, :major, :karches, :medias, :minor, :nameindicator, :ptables ]
+    config.columns = [:name, :major, :muxes, :medias, :minor, :nameindicator, :ptables ]
     config.list.columns = [:name, :major, :minor, :medias, :nameindicator, :ptables ]
     config.create.columns  << [:major, :minor]
     config.columns[:ptables].form_ui  = :select

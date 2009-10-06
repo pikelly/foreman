@@ -1,8 +1,10 @@
 class Puppetclass < ActiveRecord::Base
+  has_many :muxes
+  has_and_belongs_to_many     :hostgroups
+
   has_and_belongs_to_many :environments
   
-  has_many :muxes
-  has_many :hosts,            :through => :muxes
+  #has_many :hosts,            :through => :muxes
   has_many :operatingsystems, :through => :muxes, :uniq => true
   has_many :architectures,    :through => :muxes, :uniq => true
   
