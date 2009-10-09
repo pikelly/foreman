@@ -2,7 +2,7 @@
 
 centos5_3:
    id: 1
-   name: centos
+   name: Centos
    major: 5
    minor: 3
 

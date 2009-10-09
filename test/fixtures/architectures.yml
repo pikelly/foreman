@@ -3,6 +3,7 @@
 x86_64:
     id: 1
     name: x86_64
-#
-# two:
-#   column: value
+
+sparc:
+    id: 2
+    name: sparc

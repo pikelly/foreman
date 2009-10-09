@@ -40,6 +40,7 @@ class Host < Puppet::Rails::Host
 
   before_validation :normalize_addresses, :normalize_hostname
 
+  def puppetclasses; hostgroup.puppetclasses; end
   # Returns the name of this host as a string
   # String: the host's name
   def to_label

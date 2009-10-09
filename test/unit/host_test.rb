@@ -1,19 +1,27 @@
 require 'test_helper'
 
 class HostTest < ActiveSupport::TestCase
-  fixtures :operatingsystems, :domains, :puppetclasses, :architectures, :ptables
+  fixtures :operatingsystems, :domains, :puppetclasses, :architectures, :ptables, :environments, :puppetclasses
   
   def setup
     @mux =  Mux.find_or_create_by_operatingsystem_id_and_architecture_id_and_puppetclass_id(
          :operatingsystem => operatingsystems(:redhat5_4),
-         :architecture => architectures(:x86_64),
-         :puppetclass => puppetclasses(:base))
+         :architecture    => architectures(:x86_64),
+         :puppetclass     => puppetclasses(:base))
     
     @hostgroup = Hostgroup.new(:name => "host-logmon")
     @hostgroup.puppetclasses << puppetclasses(:base)
     @hostgroup.puppetclasses << puppetclasses(:apache)
     @hostgroup.save!
   end
+  
+  test "should be able to access its puppetclasses" do
+    host = Host.create :name => "myfullhost", :mac => "aabbecddeeff", :ip => "123.05.02.03",
+      :domain      => domains(:brs), :environment => environments(:production),
+      :hostgroup   => @hostgroup,    :ptable      => ptables(:default)
+    host.puppetclasses.map{|pc| pc.name}.sort == ["apache","base"]
+  end
+  
   test "should not save without a hostname" do
     host = Host.new
     assert !host.save
@@ -38,11 +46,12 @@ class HostTest < ActiveSupport::TestCase
   test "should be able to save host" do
     host = Host.create :name => "myfullhost", :mac => "aabbecddeeff", :ip => "123.05.02.03",
       :domain      => domains(:brs), 
-      :environment => Environment.first,
+      :environment => environments(:production),
       :hostgroup   => @hostgroup,
       :ptable      => ptables(:default)
     puts host.errors.full_messages
     assert host.valid?
+    assert Host.find_by_name("myfullhost.brs.somewhere.com") == host 
   end
 
   test "should import facts from yaml stream" do
@@ -65,21 +74,21 @@ class HostTest < ActiveSupport::TestCase
 
   test "should save if ptable is defined" do
     host = Host.create :name => "myfullhost", :mac => "aabbecddeeff", :ip => "123.05.02.03",
-      :domain => domains(:brs), :hostgroup => @hostgroup, :environment => Environment.first, :ptable => Ptable.first
+      :domain => domains(:brs), :hostgroup => @hostgroup, :environment => environments(:production), :ptable => Ptable.first
     assert host.valid?
   end
 
   test "should save if disk is defined" do
     host = Host.create :name => "myfullhost", :mac => "aabbecddeeff", :ip => "123.05.02.03",
-      :domain => domains(:brs), :hostgroup => @hostgroup, :environment => Environment.first, :disk => "aaa"
+      :domain => domains(:brs), :hostgroup => @hostgroup, :environment => environments(:production), :disk => "aaa"
     assert host.valid?
   end
 
   test "should import from external nodes output" do
     # create a dummy node
     host = Host.create :name => "myfullhost", :mac => "aabbecddeeff", :ip => "123.05.02.03",
-      :domain => domains(:brs), :operatingsystem => Operatingsystem.first,
-      :architecture => Architecture.first, :environment => Environment.first, :disk => "aaa",
+      :domain => domains(:brs), :operatingsystem => operatingsystems(:redhat5_4),
+      :architecture => architectures(:x86_64), :environment => environments(:production), :disk => "aaa",
       :hostgroup => @hostgroup
 
     # dummy external node info
