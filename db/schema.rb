@@ -9,10 +9,37 @@
 #
 # It's strongly recommended to check this file into your version control system.
 
-ActiveRecord::Schema.define(:version => 20090926095432) do
+ActiveRecord::Schema.define(:version => 20091016124919) do
 
   create_table "architectures", :force => true do |t|
     t.string   "name",       :limit => 10, :default => "x86_64", :null => false
+    t.datetime "created_at"
+    t.datetime "updated_at"
+  end
+
+  create_table "audit_trails", :force => true do |t|
+    t.integer  "record_id"
+    t.string   "record_type"
+    t.string   "event"
+    t.integer  "user_id"
+    t.datetime "created_at"
+    t.text     "description"
+  end
+
+  create_table "auth_sources", :force => true do |t|
+    t.string   "type",              :limit => 30, :default => "",    :null => false
+    t.string   "name",              :limit => 60, :default => "",    :null => false
+    t.string   "host",              :limit => 60
+    t.integer  "port"
+    t.string   "account"
+    t.string   "account_password",  :limit => 60
+    t.string   "base_dn"
+    t.string   "attr_login",        :limit => 30
+    t.string   "attr_firstname",    :limit => 30
+    t.string   "attr_lastname",     :limit => 30
+    t.string   "attr_mail",         :limit => 30
+    t.boolean  "onthefly_register",               :default => false, :null => false
+    t.boolean  "tls",                             :default => false, :null => false
     t.datetime "created_at"
     t.datetime "updated_at"
   end
@@ -137,15 +164,6 @@ ActiveRecord::Schema.define(:version => 20090926095432) do
     t.datetime "updated_at"
   end
 
-  create_table "netdbs", :force => true do |t|
-    t.string   "name",          :limit => 32, :null => false
-    t.string   "address",       :limit => 32, :null => false
-    t.integer  "servertype_id",               :null => false
-    t.integer  "vendor_id",                   :null => false
-    t.datetime "created_at"
-    t.datetime "updated_at"
-  end
-
   create_table "operatingsystems", :force => true do |t|
     t.string   "major",         :limit => 5,  :default => "", :null => false
     t.string   "name",          :limit => 64
@@ -258,11 +276,15 @@ ActiveRecord::Schema.define(:version => 20090926095432) do
   add_index "resources", ["source_file_id"], :name => "index_resources_on_source_file_id"
   add_index "resources", ["title", "restype"], :name => "index_resources_on_title_and_restype"
 
-  create_table "servertypes", :force => true do |t|
-    t.string   "name",       :limit => 16, :null => false
+  create_table "sessions", :force => true do |t|
+    t.string   "session_id", :null => false
+    t.text     "data"
     t.datetime "created_at"
     t.datetime "updated_at"
   end
+
+  add_index "sessions", ["session_id"], :name => "index_sessions_on_session_id"
+  add_index "sessions", ["updated_at"], :name => "index_sessions_on_updated_at"
 
   create_table "source_files", :force => true do |t|
     t.string   "filename"
@@ -284,11 +306,16 @@ ActiveRecord::Schema.define(:version => 20090926095432) do
     t.string   "vlanid",     :limit => 10
     t.datetime "created_at"
     t.datetime "updated_at"
-    t.integer  "dhcp_id"
   end
 
-  create_table "vendors", :force => true do |t|
-    t.string   "name",       :limit => 32, :null => false
+  create_table "users", :force => true do |t|
+    t.string   "login"
+    t.string   "firstname"
+    t.string   "lastname"
+    t.string   "mail"
+    t.boolean  "admin"
+    t.datetime "last_login_on"
+    t.integer  "auth_source_id"
     t.datetime "created_at"
     t.datetime "updated_at"
   end
