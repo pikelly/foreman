@@ -27,7 +27,7 @@ namespace :puppet do
     desc "Imports hosts and facts from existings YAML files, use dir= to override default directory"
     task :hosts_and_facts => :environment do
       dir = ENV['dir'] || "#{Puppet[:vardir]}/yaml/facts"
-      puts "Importing from #{dir}"
+      puts "Importing facts from #{dir}"
       Dir["#{dir}/*.yaml"].each do |yaml|
         name = yaml.match(/.*\/(.*).yaml/)[1]
         puts "Importing #{name}"

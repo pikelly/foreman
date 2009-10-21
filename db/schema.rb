@@ -106,14 +106,6 @@ ActiveRecord::Schema.define(:version => 20090820162618) do
   add_index "hosts", ["puppet_status"], :name => "index_hosts_on_puppet_status"
   add_index "hosts", ["source_file_id"], :name => "index_hosts_on_source_file_id"
 
-  create_table "muxes", :force => true do |t|
-    t.integer  "operatingsystem_id", :null => false
-    t.integer  "architecture_id",    :null => false
-    t.integer  "puppetclass_id"
-    t.datetime "created_at"
-    t.datetime "updated_at"
-  end
-
   create_table "medias", :force => true do |t|
     t.string   "name",               :limit => 50,  :default => "", :null => false
     t.string   "path",               :limit => 100, :default => "", :null => false
@@ -125,6 +117,23 @@ ActiveRecord::Schema.define(:version => 20090820162618) do
   create_table "models", :force => true do |t|
     t.string   "name",       :limit => 64, :null => false
     t.text     "info"
+    t.datetime "created_at"
+    t.datetime "updated_at"
+  end
+
+  create_table "muxes", :force => true do |t|
+    t.integer  "operatingsystem_id", :null => false
+    t.integer  "architecture_id",    :null => false
+    t.integer  "puppetclass_id"
+    t.datetime "created_at"
+    t.datetime "updated_at"
+  end
+
+  create_table "netdbs", :force => true do |t|
+    t.string   "name",          :limit => 32, :null => false
+    t.string   "address",       :limit => 32, :null => false
+    t.integer  "servertype_id",               :null => false
+    t.integer  "vendor_id",                   :null => false
     t.datetime "created_at"
     t.datetime "updated_at"
   end
