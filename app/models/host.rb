@@ -21,6 +21,7 @@ class Host < Puppet::Rails::Host
   alias_attribute :hostname, :name
 
   validates_uniqueness_of  :name
+<<<<<<< HEAD:app/models/host.rb
   validates_presence_of    :name, :environment_id
   unless $settings[:unattended]
     validates_uniqueness_of  :ip
@@ -36,8 +37,20 @@ class Host < Puppet::Rails::Host
     validates_format_of      :sp_mac,    :with => /([a-f0-9]{1,2}:){5}[a-f0-9]{1,2}/, :allow_nil => true, :allow_blank => true
     validates_format_of      :sp_ip,     :with => /(\d{1,3}\.){3}\d{1,3}/, :allow_nil => true, :allow_blank => true
     validates_format_of      :serial,    :with => /[01],\d{3,}n\d/, :message => "should follow this format: 0,9600n8", :allow_blank => true, :allow_nil => true
-    validates_associated     :domain, :mux :operatingsystem,  :architecture, :subnet,:media#, :user, :deployment, :model
+    validates_associated     :domain, :subnet,:media#, :user, :deployment, :model
   end
+=======
+  validates_format_of      :sp_name, :with => /.*-sp/, :allow_nil => true, :allow_blank => true
+  validates_presence_of    :name, :domain_id, :mac, :environment_id, :mux_id
+  validates_length_of      :root_pass, :minimum => 8,:too_short => 'should be 8 characters or more'
+  validates_format_of      :mac,       :with => /([a-f0-9]{1,2}:){5}[a-f0-9]{1,2}/
+  validates_format_of      :ip,        :with => /(\d{1,3}\.){3}\d{1,3}/
+  validates_presence_of    :ptable, :message => "Cant be blank unless a custom partition has been defined", :if => Proc.new { |host| host.disk.empty? and not defined?(Rake) }
+  validates_format_of      :sp_mac,    :with => /([a-f0-9]{1,2}:){5}[a-f0-9]{1,2}/, :allow_nil => true, :allow_blank => true
+  validates_format_of      :sp_ip,     :with => /(\d{1,3}\.){3}\d{1,3}/, :allow_nil => true, :allow_blank => true
+  validates_format_of      :serial,    :with => /[01],\d{3,}n\d/, :message => "should follow this format: 0,9600n8", :allow_blank => true, :allow_nil => true
+  validates_associated     :domain, :subnet,:media#, :user, :deployment, :model
+>>>>>>> Mux now does all the validates associated:app/models/host.rb
 
   before_validation :normalize_addresses, :normalize_hostname
 
@@ -219,34 +232,18 @@ class Host < Puppet::Rails::Host
 
   def populateFieldsFromFacts
     begin
-      self.mac = fv(:macaddress)
-      self.ip = fv(:ipaddress) if ip.nil?
+      self.mac    = fv(:macaddress)
+      self.ip     = fv(:ipaddress) if ip.nil?
       self.domain = Domain.find_or_create_by_name fv(:domain)
+
       # On solaris architecture fact is harwareisa
-      myarch=fv(:architecture) || fv(:hardwareisa)
-      arch=Architecture.find_or_create_by_name myarch unless myarch.empty?
+      myarch      = fv(:architecture) || fv(:hardwareisa)
+      arch        = Architecture.find_or_create_by_name myarch unless myarch.empty?
+      opsys       = Operatingsystem.build_from_facts self
+      puppetclass = Puppetclass.build_from_facts self
+
+      self.mux    = Mux.create :puppetclass => puppetclass, :operatingsystem => opsys, :architecture => arch
       
-      nameindicator = nil
-      os_name = fv(:operatingsystem)
-       if os_name == "Solaris"
-         os_major. os_minor = fv(:operatingsystemrelease).split(".")
-         nameindicator = "u"
-       else
-         os_major,os_minor  = fv(:lsbdistrelease).split(".")
-         os_minor = 1 unless os_minor
-         nameindicator = "l"
-       end
-       opsys   = Operatingsystem.find_or_create_by_name_and_major_and_minor os_name, os_major, os_minor, :nameindicator => nameindicator
-      
-      if self.name=~/...[ul]c/
-         puppetclass = Puppetclass.find_or_create_by_name("host-rd-compute")
-      else
-         puppetclass = Puppetclass.find_or_create_by_name("host-base")
-      end
-      
-      mux = Mux.create :puppetclass => puppetclass, :operatingsystem => opsys, :architecture => arch
-      
-      self.mux = mux
       # by default, puppet doesn't store an env name in the database
       env=fv(:environment) || "production"
       self.environment = Environment.find_or_create_by_name env
@@ -307,6 +304,15 @@ class Host < Puppet::Rails::Host
     end
 
     self.save
+  end
+
+  def fv name
+    unless fact(name).is_a?(Array) and not fact(name)[0].nil?
+      logger.warn "found an empty fact value for #{name}!"
+      nil
+    else
+      self.fact(name)[0].value
+    end
   end
 
   private

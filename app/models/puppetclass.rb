@@ -23,4 +23,16 @@ class Puppetclass < ActiveRecord::Base
     end
     return klasses
   end
+
+  def to_s
+    name
+  end
+  
+  def self.build_from_facts host
+    if host.name=~/...[ul]c/
+       Puppetclass.find_or_create_by_name("host-rd-compute")
+    else
+       Puppetclass.find_or_create_by_name("host-base")
+    end
+  end
 end

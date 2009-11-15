@@ -11,5 +11,4 @@ class Architecture < ActiveRecord::Base
   def to_s
     name
   end 
-  alias :to_i :to_s
 end

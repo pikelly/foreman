@@ -34,4 +34,17 @@ class Operatingsystem < ActiveRecord::Base
     "#{name}_#{to_version}"
   end
 
+  def self.build_from_facts host
+    nameindicator = nil
+    os_name = host.fv(:operatingsystem)
+     if os_name == "Solaris"
+       os_major. os_minor = host.fv(:operatingsystemrelease).split(".")
+       nameindicator = "u"
+     else
+       os_major,os_minor  = host.fv(:lsbdistrelease).split(".")
+       os_minor = 1 unless os_minor
+       nameindicator = "l"
+     end
+     Operatingsystem.find_or_create_by_name_and_major_and_minor os_name, os_major, os_minor, :nameindicator => nameindicator
+  end
 end
