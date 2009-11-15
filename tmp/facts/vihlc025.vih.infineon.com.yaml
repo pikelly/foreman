@@ -1,0 +1,57 @@
+--- !ruby/object:Puppet::Node::Facts 
+name: vihlc025.vih.infineon.com
+values: 
+  kernel: Linux
+  processorcount: "2"
+  macaddress_lo: 00:11:25:1E:13:13
+  lsbrelease: "1.3"
+  max_speed: 3600 MHz
+  rubysitedir: /usr/local/lib64/site_ruby/1.8
+  operatingsystemrelease: "3"
+  hardwaremodel: x86_64
+  platform: Linux_2.4_x86_64_all
+  uniqueid: 1fac19a9
+  swapfree: 15.98 GB
+  gi: "2"
+  netmask_eth0: 255.255.254.0
+  vmware: physical
+  ipaddress: 172.31.169.25
+  memorysize: 3.81 GB
+  clientversion: 0.24.4
+  fqdn: vihlc025.vih.infineon.com
+  ps: ps -ef
+  netmask_lo: 255.0.0.0
+  kernelrelease: 2.4.21-57.ELsmp
+  type: Rack Mount Chassis
+  domain: vih.infineon.com
+  hardwareisa: x86_64
+  lsbdistdescription: Red Hat Enterprise Linux WS release 3 (Taroon Update 9)
+  id: root
+  macaddress_eth0: 00:11:25:1E:13:12
+  manufacturer: IBM
+  memoryfree: 3.54 GB
+  lsbdistrelease: "3"
+  version: "AMD               "
+  sshrsakey: AAAAB3NzaC1yc2EAAAABIwAAAIEAmtpqc1XHXm03JoJaf3WJ/pSQ/bqYrSToG2Ih02x8XK/631DdIuF/RnLNhhv4GXdq0tR6l4OgILNdG7/KQcW3RPcVDtWlzY0OMGRSM5R4qbzY3hO/mFMjaMclIG0US9Xy2uE+a9FGW+CkvJ6F1WMnVBUefAXFDDy8TB00oSQsamc=
+  lsbdistcodename: TaroonUpdate9
+  :_timestamp: 2009-05-22 08:25:12.252040 +02:00
+  vendor: IBM
+  architecture: x86_64
+  puppetversion: 0.24.4
+  hostname: vihlc025
+  graphcard: ATI
+  rubyversion: 1.8.1
+  processor0: AMD Opteron(tm) Processor 250
+  gateway: 172.31.168.1
+  environment: vih
+  operatingsystem: RedHat
+  ipaddress_eth0: 172.31.169.25
+  swapsize: 16.00 GB
+  macaddress: 00:11:25:1E:13:12
+  processor1: AMD Opteron(tm) Processor 250
+  serial_number: KDBTR77
+  facterversion: 1.3.8
+  product_name: IBM eServer 326 -[8848PBV]-
+  sshdsakey: AAAAB3NzaC1kc3MAAACBAOSPefCBWKyfiz0u8EvUK28hrnbE9OINgqJOx+ColqHd4GRS8Ub3DAMMAJPd+o/xstiNiHryAvV0dw/joISJvgbM1eOoml23G62GRUbA1KJ48xZTvR5QN0t/gfubV8HlF+bPOjQfqd6cxJaBGaSyJo7yusT41Yxrk/gyBsXgTOZ3AAAAFQCSCV9BQ8jLQryxcqYQdW6qWSeTNwAAAIB00JlP5BBJckaXnqUoAle8FbRYwiOLgcZq7o0oaV75JhQOt6BFAMF5R1RjJQlH/SS9e5CqRls6wU9brZqGg7VoQ5tI2NBRV2Ig15HblMbVk/cntH4C3QLGtuUaVOo3dmURnsrOjPXs0+zNXUEJ3qI18pL9g7Fqn+vhJ9SIFPEFKQAAAIBB+DldxK4d2EqMT4NR0sKLZSeENNxx0bmAMtTceo17bQA46fJdp/3R8SAbFAeorcwBt7IoEeo0BKV0siTHHW67l2wEelHP8UJoD7oO6xBYr1ImMX4u599rRxxo+wNbq4l9hwe7NiAWM08opmWHpHGT8ccPbrnqeMZEENmj15CiKg==
+  ipaddress_lo: 127.0.0.1
+  lsbdistid: RedHatEnterpriseWS

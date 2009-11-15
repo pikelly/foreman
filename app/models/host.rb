@@ -323,7 +323,7 @@ class Host < Puppet::Rails::Host
     # no hostname was given, since this is before validation we need to ignore it and let the validations to produce an error
     unless self.name.empty?
       if  self.name.count(".") == 0
-        self.name = self.name + "." + self.domain.fqd unless self.domain.nil?
+        self.name = self.name + "." + self.domain.name unless self.domain.nil?
       else
         self.domain = Domain.find_or_create_by_name name.split(".")[1..-1].join(".") if domain.nil?
       end
