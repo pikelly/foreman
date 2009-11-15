@@ -21,7 +21,7 @@ class CreateMux < ActiveRecord::Migration
     add_column :puppetclasses, :operatingsystem_id, :integer
     
     add_column :hosts, :operatingsystem_id, :integer
-    add_column :hosts, :architectures_id,    :integer
+    add_column :hosts, :architecture_id,    :integer
     remove_column :hosts, :muxid_id
     
     add_column :puppetclasses, :operatingsystem_id, :integer

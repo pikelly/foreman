@@ -1,7 +1,7 @@
 require 'test_helper'
 
 class HostTest < ActiveSupport::TestCase
-  fixtures :operatingsystems, :domains, :puppetclasses
+  fixtures :operatingsystems, :domains, :puppetclasses, :architectures
   
   def setup
     @mux =  Mux.find_or_create_by_operatingsystem_id_and_architecture_id_and_puppetclass_id(

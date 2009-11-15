@@ -14,11 +14,6 @@ class NilClass
   end
 end
 
-class ApplicationController
-  class InvalidDeleteError < StandardError
-    
-  end
-end
 class ActiveRecord::Base
 
   def update_single_attribute(attribute, value)
@@ -31,11 +26,20 @@ class ActiveRecord::Base
   end
   private
   def ensure_not_used
-    self.hosts.each do |host|
-      errors.add_to_base to_label + " is used by " + host.hostname
+    puts "Count is #{hosts.count}"
+    puts to_s
+    hosts.each do |host|
+      self.errors.add_to_base(to_label + " is used by " + host.hostname)
     end
-    raise ApplicationController::InvalidDeleteError.new, errors.full_messages.join("<br>") unless errors.empty?
-    true
+    puts "good"
+    unless errors.empty?
+      logger.error "You may not destroy #{to_label} as it is in use!"
+      #raise ApplicationController::InvalidDeleteError.new, errors.full_messages.join("<br>")
+      puts "BAD"
+      false
+    else
+      true
+    end
   end
 end
 

@@ -4,10 +4,10 @@ class Mux < ActiveRecord::Base
   belongs_to :operatingsystem
   has_many   :hosts
   
-  validates_associated :architecture, :puppetclass, :operatingsystem, :hosts
+  validates_associated :architecture, :puppetclass, :operatingsystem
 
 
   def to_s
-    "#{operatingsystem.to_i} #{architecture.to_i}"
+    "#{operatingsystem.to_i} #{architecture}"
   end
 end

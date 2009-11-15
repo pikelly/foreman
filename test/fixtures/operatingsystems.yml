@@ -1,16 +1,19 @@
 # Read about fixtures at http://ar.rubyonrails.org/classes/Fixtures.html
 
 centos5_3:
+   id: 1
    name: centos
    major: 5
    minor: 3
 
 redhat5_3:
+   id: 2
    name: RedHat
    major: 5
    minor: 3
    
 redhat5_4:
+   id: 3
    name: RedHat
    major: 5
    minor: 4

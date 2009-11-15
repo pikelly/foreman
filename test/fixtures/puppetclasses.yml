@@ -1,8 +1,11 @@
 # Read about fixtures at http://ar.rubyonrails.org/classes/Fixtures.html
 
-one:
+base:
+  id: 1
   name: base
+  nameindicator: MyIndicator1
 
-two:
+apache:
+  id: 2
   name: apache
-  nameindicator: MyString
+  nameindicator: MyIndicator2

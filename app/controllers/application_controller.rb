@@ -11,6 +11,17 @@ class ApplicationController < ActionController::Base
   layout 'standard'
 
   before_filter :require_login
+#  def initialise_network_cache
+#    unless (@denied = session[:denied])
+#      @denied = session[:denied] = {:dns => [], :dhcp => []}
+#    end
+#    unless (@dhcp = Cache::get(:dhcp))
+#      Cache::add(:dhcp, Dhcp.new( @denied[:dhcp], auth), 7200)
+#      @dhcp = Cache::get(:dhcp)
+#      raise RuntimeException, "Unable to create DHCP memcache storage" if @dhcp.nil?
+#    end
+#    @dhcp = ISCDHCPServer.new()
+#  end
 
   def self.active_scaffold_controller_for(klass)
     return FactNamesController if klass == Puppet::Rails::FactName

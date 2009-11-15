@@ -9,7 +9,7 @@
 #
 # It's strongly recommended to check this file into your version control system.
 
-ActiveRecord::Schema.define(:version => 20090820162618) do
+ActiveRecord::Schema.define(:version => 20090920065522) do
 
   create_table "architectures", :force => true do |t|
     t.string   "name",       :limit => 10, :default => "x86_64", :null => false
@@ -70,7 +70,7 @@ ActiveRecord::Schema.define(:version => 20090820162618) do
   end
 
   create_table "hosts", :force => true do |t|
-    t.string   "name",                                                :null => false
+    t.string   "name",                                             :null => false
     t.string   "ip"
     t.datetime "last_compile"
     t.datetime "last_freshcheck"
@@ -85,24 +85,30 @@ ActiveRecord::Schema.define(:version => 20090820162618) do
     t.string   "root_pass",       :limit => 64
     t.string   "serial",          :limit => 12
     t.string   "puppetmaster"
-    t.integer  "puppet_status",                 :default => 0,    :null => false
+    t.integer  "puppet_status",                 :default => 0,     :null => false
     t.integer  "domain_id"
     t.integer  "environment_id"
     t.integer  "subnet_id"
     t.integer  "sp_subnet_id"
     t.integer  "ptable_id"
     t.integer  "media_id"
-    t.boolean  "build",                         :default => true
+    t.boolean  "build",                         :default => false
     t.text     "comment"
     t.text     "disk"
     t.datetime "installed_at"
     t.integer  "model_id"
     t.integer  "mux_id"
+    t.integer  "hostgroup_id"
   end
 
+  add_index "hosts", ["domain_id"], :name => "host_domain_id_ix"
+  add_index "hosts", ["environment_id"], :name => "host_env_id_ix"
+  add_index "hosts", ["hostgroup_id"], :name => "host_group_id_ix"
   add_index "hosts", ["id"], :name => "index_hosts_on_id"
+  add_index "hosts", ["installed_at"], :name => "index_hosts_on_installed_at"
+  add_index "hosts", ["last_report"], :name => "index_hosts_on_last_report"
+  add_index "hosts", ["media_id"], :name => "host_media_id_ix"
   add_index "hosts", ["name"], :name => "index_hosts_on_name"
-  add_index "hosts", ["operatingsystem_id"], :name => "host_os_id_ix"
   add_index "hosts", ["puppet_status"], :name => "index_hosts_on_puppet_status"
   add_index "hosts", ["source_file_id"], :name => "index_hosts_on_source_file_id"
 
@@ -209,7 +215,6 @@ ActiveRecord::Schema.define(:version => 20090820162618) do
   create_table "puppetclasses", :force => true do |t|
     t.string   "name"
     t.string   "nameindicator"
-    t.integer  "operatingsystem_id"
     t.datetime "created_at"
     t.datetime "updated_at"
   end
@@ -251,6 +256,12 @@ ActiveRecord::Schema.define(:version => 20090820162618) do
   add_index "resources", ["source_file_id"], :name => "index_resources_on_source_file_id"
   add_index "resources", ["title", "restype"], :name => "index_resources_on_title_and_restype"
 
+  create_table "servertypes", :force => true do |t|
+    t.string   "name",       :limit => 16, :null => false
+    t.datetime "created_at"
+    t.datetime "updated_at"
+  end
+
   create_table "source_files", :force => true do |t|
     t.string   "filename"
     t.string   "path"
@@ -269,6 +280,13 @@ ActiveRecord::Schema.define(:version => 20090820162618) do
     t.string   "ranges",     :limit => 512
     t.text     "name"
     t.string   "vlanid",     :limit => 10
+    t.datetime "created_at"
+    t.datetime "updated_at"
+    t.integer  "dhcp_id"
+  end
+
+  create_table "vendors", :force => true do |t|
+    t.string   "name",       :limit => 32, :null => false
     t.datetime "created_at"
     t.datetime "updated_at"
   end

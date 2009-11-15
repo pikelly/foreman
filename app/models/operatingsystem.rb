@@ -24,6 +24,7 @@ class Operatingsystem < ActiveRecord::Base
 
   def to_version
     "#{major}#{('-' + minor) unless minor.empty?}"
+  end
   alias :to_i :to_label
   
   def to_s
@@ -38,10 +39,10 @@ class Operatingsystem < ActiveRecord::Base
     nameindicator = nil
     os_name = host.fv(:operatingsystem)
      if os_name == "Solaris"
-       os_major. os_minor = host.fv(:operatingsystemrelease).split(".")
+       os_major, os_minor = host.fv(:operatingsystemrelease).split(".")
        nameindicator = "u"
      else
-       os_major,os_minor  = host.fv(:lsbdistrelease).split(".")
+       os_major, os_minor  = host.fv(:lsbdistrelease).split(".")
        os_minor = 1 unless os_minor
        nameindicator = "l"
      end
