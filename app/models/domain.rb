@@ -18,7 +18,11 @@ class Domain < ActiveRecord::Base
   end
 
   def to_s
-    to_label
+    name
+  end
+  
+  def fqd
+    self.name + $settings[:organisation]
   end
 
   # counts how many times a certian fact value exists in this domain

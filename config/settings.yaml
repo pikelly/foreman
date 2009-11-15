@@ -7,3 +7,5 @@
 #if none specified, plain "puppet" will be used.
 #:puppet_server: puppet
 #:unattended: false
+:logfile: /var/log/gni.log
+:organisation: .somewhere.com

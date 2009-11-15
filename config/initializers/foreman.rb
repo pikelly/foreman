@@ -14,6 +14,11 @@ class NilClass
   end
 end
 
+class ApplicationController
+  class InvalidDeleteError < StandardError
+    
+  end
+end
 class ActiveRecord::Base
 
   def update_single_attribute(attribute, value)

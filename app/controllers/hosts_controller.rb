@@ -9,12 +9,18 @@ class HostsController < ApplicationController
     list.per_page = 15
     list.sorting = {:name => 'ASC' }
     config.actions.exclude :show
-    config.list.columns = [:name, :operatingsystem, :environment, :last_report ]
-    config.columns = %w{ name hostgroup puppetclasses environment domain puppetmaster comment host_parameters}
+    config.list.columns = [:name, :karch, :environment, :last_compile ]
+    config.columns[:architecture].form_ui  = :select
+    config.columns = [:name, :ip, :mac, :karch, :puppetclasses, :hostgroup, :environment, :media, :domain, :model, :root_pass, :serial, :puppetmaster, :ptable, :disk,
+                      :comment, :host_parameters]
+    #config.columns[:architecture].form_ui  = :select
+    config.columns[:media].form_ui  = :select
     config.columns[:hostgroup].form_ui  = :select
     config.columns[:domain].form_ui  = :select
+    config.columns[:puppetclass].form_ui  = :select
     config.columns[:environment].form_ui  = :select
-    config.columns[:puppetclasses].form_ui  = :select
+    config.columns[:ptable].form_ui  = :select
+    #config.columns[:operatingsystem].form_ui  = :select
     config.columns[:fact_values].association.reverse = :host
     config.nested.add_link("Inventory", [:fact_values])
     config.columns[:puppetmaster].description = "leave empty if its just puppet"

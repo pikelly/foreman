@@ -1,4 +1,6 @@
 <ul>
+  <li><%= link_to 'Models',              { :controller => 'models' } %></li>
+  <li><%= link_to 'Kernel Architectures', { :controller => 'karches' } %></li>
   <li><%= link_to 'Puppet Classes',     { :controller => 'puppetclasses' } %></li>
   <li><%= link_to 'Puppet Groups',      { :controller => 'hostgroups' } %></li>
   <li><%= link_to 'Domains',            { :controller => 'domains' } %></li>
@@ -11,4 +13,5 @@
   <li><%= link_to 'Global Parameters',  { :controller => 'common_parameters' } %></li>
   <li><%= link_to 'LDAP Authentication',{ :controller => 'auth_sources' } %></li>
   <li><%= link_to_if $settings[:ldap], 'Users',              { :controller => 'users' } %></li>
+  <li><%= link_to 'Sites',               { :controller => 'domains' } %></li>
 </ul>

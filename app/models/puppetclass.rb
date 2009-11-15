@@ -1,9 +1,10 @@
 class Puppetclass < ActiveRecord::Base
   has_and_belongs_to_many :environments
-  has_and_belongs_to_many :operatingsystems
-  has_and_belongs_to_many :hosts
-  has_and_belongs_to_many :hostgroups
-
+  has_many :karches
+  has_many :hosts,            :through => :karches
+  has_many :operatingsystems, :through => :karches, :uniq => true
+  has_many :architectures,    :through => :karches, :uniq => true
+  
   validates_uniqueness_of :name
   validates_presence_of :name
   validates_associated :environments

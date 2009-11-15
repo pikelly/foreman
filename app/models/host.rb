@@ -1,10 +1,11 @@
 class Host < Puppet::Rails::Host
-  belongs_to :architecture
+  belongs_to :karch
+  has_one    :architecture,    :through => :karch
+  has_one    :operatingsystem, :through => :karch
+  has_one    :puppetclass,     :through => :karch
   belongs_to :media
   belongs_to :model
   belongs_to :domain
-  belongs_to :operatingsystem
-  has_and_belongs_to_many :puppetclasses
   belongs_to :environment
   belongs_to :subnet
   belongs_to :ptable
@@ -16,7 +17,6 @@ class Host < Puppet::Rails::Host
   acts_as_audited :except => [:last_report, :puppet_status, :last_compile]
 
   # some shortcuts
-  alias_attribute :os, :operatingsystem
   alias_attribute :arch, :architecture
   alias_attribute :hostname, :name
 
@@ -28,7 +28,7 @@ class Host < Puppet::Rails::Host
     validates_uniqueness_of  :sp_mac, :allow_nil => true, :allow_blank => true
     validates_uniqueness_of  :sp_name, :sp_ip, :allow_blank => true, :allow_nil => true
     validates_format_of      :sp_name, :with => /.*-sp/, :allow_nil => true, :allow_blank => true
-    validates_presence_of    :architecture_id, :domain_id, :mac, :operatingsystem_id
+    validates_presence_of    :architecture_id, :domain_id, :mac, :operatingsystem_id, :karch_id
     validates_length_of      :root_pass, :minimum => 8,:too_short => 'should be 8 characters or more'
     validates_format_of      :mac,       :with => /([a-f0-9]{1,2}:){5}[a-f0-9]{1,2}/
       validates_format_of      :ip,        :with => /(\d{1,3}\.){3}\d{1,3}/
@@ -36,7 +36,7 @@ class Host < Puppet::Rails::Host
     validates_format_of      :sp_mac,    :with => /([a-f0-9]{1,2}:){5}[a-f0-9]{1,2}/, :allow_nil => true, :allow_blank => true
     validates_format_of      :sp_ip,     :with => /(\d{1,3}\.){3}\d{1,3}/, :allow_nil => true, :allow_blank => true
     validates_format_of      :serial,    :with => /[01],\d{3,}n\d/, :message => "should follow this format: 0,9600n8", :allow_blank => true, :allow_nil => true
-    validates_associated     :domain, :operatingsystem,  :architecture, :subnet,:media#, :user, :deployment, :model
+    validates_associated     :domain, :karch, :operatingsystem,  :architecture, :subnet,:media#, :user, :deployment, :model
   end
 
   before_validation :normalize_addresses, :normalize_hostname
@@ -321,9 +321,9 @@ class Host < Puppet::Rails::Host
   # if the user added a domain, and the domain doesn't exist, we add it dynamically.
   def normalize_hostname
     # no hostname was given, since this is before validation we need to ignore it and let the validations to produce an error
-    unless name.empty?
-      if name.count(".") == 0
-        self.name = name + "." + domain.name unless domain.nil?
+    unless self.name.empty?
+      if  self.name.count(".") == 0
+        self.name = self.name + "." + self.domain.fqd unless self.domain.nil?
       else
         self.domain = Domain.find_or_create_by_name name.split(".")[1..-1].join(".") if domain.nil?
       end

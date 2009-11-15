@@ -1,9 +1,12 @@
 class Operatingsystem < ActiveRecord::Base
-  has_many :hosts
+  has_many :karches, :dependent => :destroy
   has_many :medias
   has_and_belongs_to_many :ptables
-  has_and_belongs_to_many :architectures
-  has_and_belongs_to_many :puppetclasses
+  
+  has_many :hosts,         :through => :karches
+  has_many :architectures, :through => :karches, :uniq => true
+  has_many :puppetclasses, :through => :karches, :uniq => true
+  
   validates_presence_of :major, :message => "Operating System version is required"
   validates_presence_of :name
   #TODO: add validation for name and major uniqueness
@@ -21,6 +24,10 @@ class Operatingsystem < ActiveRecord::Base
 
   def to_version
     "#{major}#{('-' + minor) unless minor.empty?}"
+  alias :to_i :to_label
+  
+  def to_s
+    to_label
   end
 
   def fullname
