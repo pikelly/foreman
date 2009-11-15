@@ -1,0 +1,8 @@
+# This table maps model names, as returned by the product_name fact, to a ruby regexp modified string
+# The regexps are applied, in order until a match is found
+# Ensure that the last line of this list matches all previously unmatched strings
+(?i)^(Sun Fire \S+(?: \S*)?)  --> "#{$1}"
+(?i)^(IBM \S+(?: \S+)?)       --> "#{$1}"
+(?i)^(HP \S+(?: \S+)?)        --> "#{$1}"
+(?i)^(An) (example) \S+\s(\d) --> "#{$3}: #{$2} #{$1}"
+(?i)^(.*)                     --> "#{$1}"

@@ -9,7 +9,7 @@
 #
 # It's strongly recommended to check this file into your version control system.
 
-ActiveRecord::Schema.define(:version => 20091016124919) do
+ActiveRecord::Schema.define(:version => 20091022054108) do
 
   create_table "architectures", :force => true do |t|
     t.string   "name",       :limit => 10, :default => "x86_64", :null => false
@@ -17,14 +17,21 @@ ActiveRecord::Schema.define(:version => 20091016124919) do
     t.datetime "updated_at"
   end
 
-  create_table "audit_trails", :force => true do |t|
-    t.integer  "record_id"
-    t.string   "record_type"
-    t.string   "event"
+  create_table "audits", :force => true do |t|
+    t.integer  "auditable_id"
+    t.string   "auditable_type"
     t.integer  "user_id"
+    t.string   "user_type"
+    t.string   "username"
+    t.string   "action"
+    t.text     "changes"
+    t.integer  "version",        :default => 0
     t.datetime "created_at"
-    t.text     "description"
   end
+
+  add_index "audits", ["auditable_id", "auditable_type"], :name => "auditable_index"
+  add_index "audits", ["created_at"], :name => "index_audits_on_created_at"
+  add_index "audits", ["user_id", "user_type"], :name => "user_index"
 
   create_table "auth_sources", :force => true do |t|
     t.string   "type",              :limit => 30, :default => "",    :null => false
@@ -70,7 +77,6 @@ ActiveRecord::Schema.define(:version => 20091016124919) do
     t.datetime "created_at"
   end
 
-  add_index "fact_names", ["id"], :name => "index_fact_names_on_id"
   add_index "fact_names", ["name"], :name => "index_fact_names_on_name"
 
   create_table "fact_values", :force => true do |t|
@@ -83,7 +89,6 @@ ActiveRecord::Schema.define(:version => 20091016124919) do
 
   add_index "fact_values", ["fact_name_id"], :name => "index_fact_values_on_fact_name_id"
   add_index "fact_values", ["host_id"], :name => "index_fact_values_on_host_id"
-  add_index "fact_values", ["id"], :name => "index_fact_values_on_id"
 
   create_table "hostgroups", :force => true do |t|
     t.string   "name"
@@ -99,6 +104,7 @@ ActiveRecord::Schema.define(:version => 20091016124919) do
   create_table "hosts", :force => true do |t|
     t.string   "name",                                                :null => false
     t.string   "ip"
+    t.string   "environment"
     t.datetime "last_compile"
     t.datetime "last_freshcheck"
     t.datetime "last_report"
@@ -133,13 +139,17 @@ ActiveRecord::Schema.define(:version => 20091016124919) do
   add_index "hosts", ["domain_id"], :name => "host_domain_id_ix"
   add_index "hosts", ["environment_id"], :name => "host_env_id_ix"
   add_index "hosts", ["hostgroup_id"], :name => "host_group_id_ix"
-  add_index "hosts", ["id"], :name => "index_hosts_on_id"
   add_index "hosts", ["installed_at"], :name => "index_hosts_on_installed_at"
   add_index "hosts", ["last_report"], :name => "index_hosts_on_last_report"
   add_index "hosts", ["media_id"], :name => "host_media_id_ix"
   add_index "hosts", ["name"], :name => "index_hosts_on_name"
   add_index "hosts", ["puppet_status"], :name => "index_hosts_on_puppet_status"
   add_index "hosts", ["source_file_id"], :name => "index_hosts_on_source_file_id"
+
+  create_table "hosts_puppetclasses", :id => false, :force => true do |t|
+    t.integer "puppetclass_id", :null => false
+    t.integer "host_id",        :null => false
+  end
 
   create_table "medias", :force => true do |t|
     t.string   "name",               :limit => 50,  :default => "", :null => false
@@ -184,7 +194,6 @@ ActiveRecord::Schema.define(:version => 20091016124919) do
     t.datetime "created_at"
   end
 
-  add_index "param_names", ["id"], :name => "index_param_names_on_id"
   add_index "param_names", ["name"], :name => "index_param_names_on_name"
 
   create_table "param_values", :force => true do |t|
@@ -196,7 +205,6 @@ ActiveRecord::Schema.define(:version => 20091016124919) do
     t.datetime "created_at"
   end
 
-  add_index "param_values", ["id"], :name => "index_param_values_on_id"
   add_index "param_values", ["param_name_id"], :name => "index_param_values_on_param_name_id"
   add_index "param_values", ["resource_id"], :name => "index_param_values_on_resource_id"
 
@@ -245,9 +253,13 @@ ActiveRecord::Schema.define(:version => 20091016124919) do
     t.datetime "reported_at"
     t.datetime "created_at"
     t.datetime "updated_at"
+    t.integer  "status"
   end
 
+  add_index "reports", ["host_id"], :name => "index_reports_on_host_id"
   add_index "reports", ["reported_at", "host_id"], :name => "index_reports_on_reported_at_and_host_id"
+  add_index "reports", ["reported_at"], :name => "index_reports_on_reported_at"
+  add_index "reports", ["status"], :name => "index_reports_on_status"
 
   create_table "resource_tags", :force => true do |t|
     t.integer  "resource_id"
@@ -256,7 +268,6 @@ ActiveRecord::Schema.define(:version => 20091016124919) do
     t.datetime "created_at"
   end
 
-  add_index "resource_tags", ["id"], :name => "index_resource_tags_on_id"
   add_index "resource_tags", ["puppet_tag_id"], :name => "index_resource_tags_on_puppet_tag_id"
   add_index "resource_tags", ["resource_id"], :name => "index_resource_tags_on_resource_id"
 
@@ -272,9 +283,8 @@ ActiveRecord::Schema.define(:version => 20091016124919) do
   end
 
   add_index "resources", ["host_id"], :name => "index_resources_on_host_id"
-  add_index "resources", ["id"], :name => "index_resources_on_id"
+  add_index "resources", ["restype", "title"], :name => "typentitle"
   add_index "resources", ["source_file_id"], :name => "index_resources_on_source_file_id"
-  add_index "resources", ["title", "restype"], :name => "index_resources_on_title_and_restype"
 
   create_table "sessions", :force => true do |t|
     t.string   "session_id", :null => false
@@ -294,7 +304,6 @@ ActiveRecord::Schema.define(:version => 20091016124919) do
   end
 
   add_index "source_files", ["filename"], :name => "index_source_files_on_filename"
-  add_index "source_files", ["id"], :name => "index_source_files_on_id"
 
   create_table "subnets", :force => true do |t|
     t.string   "number",     :limit => 15

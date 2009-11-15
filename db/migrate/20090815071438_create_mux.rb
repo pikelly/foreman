@@ -14,7 +14,6 @@ class CreateMux < ActiveRecord::Migration
     
     drop_table :architectures_operatingsystems
     drop_table :operatingsystems_puppetclasses
-    drop_table :hosts_puppetclasses
   end
 
   def self.down

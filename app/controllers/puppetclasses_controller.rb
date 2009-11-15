@@ -1,7 +1,7 @@
 class PuppetclassesController < ApplicationController
   active_scaffold :puppetclass do |config|
     config.label = "Puppet classes"
-    config.columns = [ :name, :nameindicator, :environments, :architectures, :operatingsystems ]
+    config.columns = [ :name, :nameindicator, :environments, :valid_architectures, :valid_operatingsystems ]
     config.list.columns = [ :name, :nameindicator, :environments ]
     config.update.columns = [ :name, :nameindicator, :environments ]
     config.create.columns = [ :name, :nameindicator, :environments ]
@@ -10,8 +10,8 @@ class PuppetclassesController < ApplicationController
     config.columns[:environments].description = "The environments which are enabled for this host type"
 
     #config.nested.add_link("Hosts",                [:hosts])
-    config.nested.add_link("valid combinations",   [:muxes])
-    config.nested.add_link("Architectures",        [:architectures])
-    config.nested.add_link("Operating systems",    [:operatingsystems])
+    config.nested.add_link("Edit os/architecture support",   [:muxes])
+    config.nested.add_link("Architectures",        [:valid_architectures])
+    config.nested.add_link("Operating systems",    [:valid_operatingsystems])
   end
 end

@@ -2,13 +2,15 @@ class Host < Puppet::Rails::Host
   belongs_to :architecture
   belongs_to :operatingsystem
   belongs_to :hostgroup
-  #has_many   :puppetclasses,     :through => :hostgroup
+  has_and_belongs_to_many :direct_puppetclasses,   :class_name => "Puppetclass", :join_table => "hosts_puppetclasses", 
+                          :association_foreign_key => "puppetclass_id",  :foreign_key => "host_id"
   belongs_to :media
   belongs_to :model
   belongs_to :domain
   belongs_to :environment
   belongs_to :subnet
   belongs_to :ptable
+  belongs_to :mux
   has_many :reports, :dependent => :destroy
   has_many :host_parameters, :dependent => :destroy
 
@@ -40,7 +42,7 @@ class Host < Puppet::Rails::Host
 
   before_validation :normalize_addresses, :normalize_hostname
 
-  def puppetclasses; hostgroup.puppetclasses; end
+  #def puppetclasses; hostgroup.puppetclasses; end
   # Returns the name of this host as a string
   # String: the host's name
   def to_label
@@ -64,6 +66,12 @@ class Host < Puppet::Rails::Host
     FactValue.delete_all("host_id = #{self.id}")
   end
 
+  def indirect_puppetclasses
+    hostgroup ? hostgroup.puppetclasses(:uniq => true) : []
+  end
+  def puppetclasses
+    (indirect_puppetclasses + direct_puppetclasses).uniq # This may not be very efficient
+  end
   # Called from the host build post install process to indicate that the base build has completed
   # Build is cleared and the boot link and autosign entries are removed
   # A site specific build script is called at this stage that can do site specific tasks
@@ -138,7 +146,7 @@ class Host < Puppet::Rails::Host
     if hostgroup.nil?
       return puppetclasses.collect {|c| c.name}
     else
-      return (hostgroup.puppetclasses.collect {|c| c.name}).uniq
+      return (hostgroup.puppetclasses.collect {|c| c.name} + puppetclasses.collect {|c| c.name}).uniq
     end
   end
 
@@ -188,13 +196,13 @@ class Host < Puppet::Rails::Host
     if last_compile.nil? or (last_compile + 1.minute < time)
       self.last_compile = time
       begin
-      # save all other facts
-      if self.respond_to?("merge_facts")
-        self.merge_facts(facts.values)
-        # pre 0.25 it was called setfacts
-      else
-        self.setfacts(facts.values)
-      end
+        # save all other facts
+        if self.respond_to?("merge_facts")
+          self.merge_facts(facts.values)
+          # pre 0.25 it was called setfacts
+        else
+          self.setfacts(facts.values)
+        end
         # we are saving here with no validations, as we want this process to be as fast
         # as possible, assuming we already have all the right settings in Foreman.
         # If we don't (e.g. we never install the server via Foreman, we populate the fields from facts
@@ -223,17 +231,55 @@ class Host < Puppet::Rails::Host
       self.ip              = fv(:ipaddress) if ip.nil?
       self.domain          = Domain.find_or_create_by_name fv(:domain)
       # On solaris architecture fact is harwareisa
-      myarch               = fv(:architecture) || fv(:hardwareisa)
+      if fv(:hardwareisa) == "sparc"
+        myarch     = "sparc" 
+        mymodel      = fv(:architecture) 
+      else
+        if fv(:product_name) == "VMware Virtual Platform"
+          mymodel = "VMWare"
+          if fv(:kernel) == "SunOS"
+            myarch = "x86_64"
+          else
+            myarch = fv(:architecture)
+          end
+        else
+          if fv(:product_name).nil?
+            mymodel = "Generic"
+          else
+            mymodel = fv(:product_name).gsub(/^\s*"|\s*"$/,"")
+            for pattern, replacement in $model_map 
+              if mymodel.match /#{pattern}/
+                mymodel = eval "#{replacement}"
+                break
+              end
+            end
+          end
+          if fv(:architecture) =~ /^SunOS/
+            myarch = fv(:hardwareisa)
+          else
+            myarch = fv(:architecture)
+          end
+
+        end
+      end
+      self.model = Model.find_or_create_by_name(mymodel)
       self.architecture    = Architecture.find_or_create_by_name myarch unless myarch.empty?
       self.operatingsystem = Operatingsystem.build_from_facts self
-      #self.hostgroup       = Hostgroup.build_from_facts self
-
-      self.hostgroup       = Hostgroup.find_or_create_by_name fv(:puppetclass) #TODO: This should read hostgroup
+      if self.operatingsystem.nil?
+        logger.warn "Unable to determine the OS for #{self.name}. Skipping. . ."
+        return
+      end
       
       # by default, puppet doesn't store an env name in the database
       env=fv(:environment) || "production"
       self.environment = Environment.find_or_create_by_name env
-  
+      
+      # Make the host a generic machine
+      hg = Hostgroup.find_or_create_by_name("generic")
+      hg.puppetclasses << Puppetclass.find_or_create_by_name("base") if hg.puppetclasses.empty?
+      hg.save if hg.new_record?
+      
+      self.hostgroup = hg
       # Again we do not use validations as we can be sure that the ptable has not been set!!
       self.save_with_validation(false)
     rescue Exception => e
@@ -266,6 +312,7 @@ class Host < Puppet::Rails::Host
     nodeinfo["classes"].each do |klass|
       if pc = Puppetclass.find_by_name(klass)
         self.hostgroup.puppetclasses << pc unless self.hostgroup.puppetclasses.exists?(pc)
+        Mux.find_or_create_by_puppetclass_id_and_architecture_id_and_operatingsystem_id(pc.id, architecture.id, operatingsystem.id)
       else
         logger.warn "Failed to import #{klass} for #{name}: doesn't exists in our database - ignoring"
         $stderr.puts $!
@@ -291,15 +338,6 @@ class Host < Puppet::Rails::Host
     end
 
     self.save
-  end
-
-  def fv name
-    unless fact(name).is_a?(Array) and not fact(name)[0].nil?
-      logger.warn "found an empty fact value for #{name}!"
-      nil
-    else
-      self.fact(name)[0].value
-    end
   end
 
   private

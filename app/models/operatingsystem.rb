@@ -5,8 +5,9 @@ class Operatingsystem < ActiveRecord::Base
   has_many :medias
   has_and_belongs_to_many :ptables
   
-  has_many :architectures, :through => :muxes, :uniq => true
-  has_many :puppetclasses, :through => :muxes, :uniq => true
+  has_many :valid_architectures, :through => :muxes, :uniq => true, :source => :architecture
+  has_many :valid_puppetclasses, :through => :muxes, :uniq => true, :source => :puppetclass
+  has_many :architectures,       :through => :hosts, :uniq => true
   
   validates_presence_of :major, :message => "Operating System version is required"
   validates_presence_of :name
@@ -44,6 +45,7 @@ class Operatingsystem < ActiveRecord::Base
        os_major, os_minor = host.fv(:operatingsystemrelease).split(".")
        nameindicator = "u"
      else
+       return nil if host.fv(:lsbdistrelease).nil? or host.fv(:lsbdistrelease)!~/^\d/
        os_major, os_minor  = host.fv(:lsbdistrelease).split(".")
        os_minor = 1 unless os_minor
        nameindicator = "l"

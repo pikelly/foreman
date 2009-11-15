@@ -1,5 +1,7 @@
 class Subnet < ActiveRecord::Base
-  has_many :hosts, :through => :domain
+  # This is redundant. The host has a direct association
+  #has_many :hosts, :through => :domain
+  has_many :hosts
   has_many :sps, :through => :hosts
   belongs_to :domain
   validates_presence_of   :number, :mask

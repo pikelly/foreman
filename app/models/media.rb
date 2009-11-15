@@ -7,6 +7,5 @@ class Media < ActiveRecord::Base
   validates_format_of :path, :with => /^((http|ftp):\/\/)|\w+:\/\w+/, 
     :message => "Url (http:// or ftp://) or a NFS share area allowed (e.g. server:/vol/dir)"
 
-  alias_attribute :os, :operatingsystem
   before_destroy :ensure_not_used
 end

@@ -45,10 +45,13 @@ class HostTest < ActiveSupport::TestCase
 
   test "should be able to save host" do
     host = Host.create :name => "myfullhost", :mac => "aabbecddeeff", :ip => "123.05.02.03",
-      :domain      => domains(:brs), 
-      :environment => environments(:production),
-      :hostgroup   => @hostgroup,
-      :ptable      => ptables(:default)
+      :domain          => domains(:brs), 
+      :environment     => environments(:production),
+      :hostgroup       => @hostgroup,
+      :ptable          => ptables(:default),
+      :mux             => @mux,
+      :operatingsystem => operatingsystems(:redhat5_4),
+      :architecture    => architectures(:x86_64)
     puts host.errors.full_messages
     assert host.valid?
     assert Host.find_by_name("myfullhost.brs.somewhere.com") == host 
@@ -58,6 +61,7 @@ class HostTest < ActiveSupport::TestCase
     h=Host.new(:name => "sinn1636.lan")
     h.disk = "!" # workaround for now
     h.importFacts YAML::load(File.read(File.expand_path(File.dirname(__FILE__) + "/facts.yml")))
+    h.mux = Mux.create( :architecture => h.architecture, :operatingsystem => h.operatingsystem, :puppetclass => puppetclasses(:base))
     assert h.valid?
   end
 
@@ -68,18 +72,21 @@ class HostTest < ActiveSupport::TestCase
 
   test "should not save if both ptable and disk are not defined" do
     host = Host.create :name => "myfullhost", :mac => "aabbecddeeff", :ip => "123.05.02.03",
+      :architecture => architectures(:x86_64), :operatingsystem => operatingsystems(:redhat5_4),
       :domain => domains(:brs), :hostgroup => @hostgroup, :environment => Environment.first
     assert !host.valid?
   end
 
   test "should save if ptable is defined" do
     host = Host.create :name => "myfullhost", :mac => "aabbecddeeff", :ip => "123.05.02.03",
+      :architecture => architectures(:x86_64), :operatingsystem => operatingsystems(:redhat5_4), :mux => @mux,
       :domain => domains(:brs), :hostgroup => @hostgroup, :environment => environments(:production), :ptable => Ptable.first
     assert host.valid?
   end
 
   test "should save if disk is defined" do
-    host = Host.create :name => "myfullhost", :mac => "aabbecddeeff", :ip => "123.05.02.03",
+    host = Host.create :name => "myfullhost", :mac => "aabbecddeeff", :ip => "123.05.02.03", :mux => @mux,
+      :architecture => architectures(:x86_64), :operatingsystem => operatingsystems(:redhat5_4),
       :domain => domains(:brs), :hostgroup => @hostgroup, :environment => environments(:production), :disk => "aaa"
     assert host.valid?
   end
@@ -89,7 +96,7 @@ class HostTest < ActiveSupport::TestCase
     host = Host.create :name => "myfullhost", :mac => "aabbecddeeff", :ip => "123.05.02.03",
       :domain => domains(:brs), :operatingsystem => operatingsystems(:redhat5_4),
       :architecture => architectures(:x86_64), :environment => environments(:production), :disk => "aaa",
-      :hostgroup => @hostgroup
+      :hostgroup => @hostgroup, :mux => @mux
 
     # dummy external node info
     nodeinfo = {"parameters"=>{"puppetmaster"=>"puppet", "MYVAR"=>"value"}, "classes"=>["base","apache"]}

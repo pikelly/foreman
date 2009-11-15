@@ -3,6 +3,18 @@ require 'gchart'
 
 # import settings file
 $settings = YAML.load_file("#{RAILS_ROOT}/config/settings.yaml")
+$model_map = []
+File.open("#{RAILS_ROOT}/config/model_map")do |file|
+  for line in file
+    next if line=~/^\s?#/
+    reg, match = line.match(/^(.*?)\s+-->\s\s*(.*)$/)[1,2] rescue [nil, nil]
+    if reg.nil? or match.nil?
+      logger.error "Failed to parse model map file at #{line}"
+      exit
+    end
+    $model_map << [reg, match]
+  end
+end
 
 Puppet[:config] = $settings[:puppetconfdir] || "/etc/puppet/puppet.conf"
 Puppet.parse_config
