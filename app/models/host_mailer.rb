@@ -4,12 +4,10 @@ class HostMailer < ActionMailer::Base
     # currently we send to all registered users or to the administrator (if LDAP is disabled).
     # TODO add support to host / group based emails.
 
+    check_foreman_url
+
     # options our host list if required
     filter = []
-
-    if (body[:url] = SETTINGS[:foreman_url]).empty?
-      raise ":foreman_url: entry in Foreman configuration file, see http://theforeman.org/projects/foreman/wiki/Mail_Notifications"
-    end
 
     if options[:env]
       hosts = envhosts = options[:env].hosts
@@ -34,11 +32,10 @@ class HostMailer < ActionMailer::Base
     email = options[:email] || SETTINGS[:administrator] || User.all(:select => :mail).map(&:mail)
     raise "unable to find recipients" if email.empty?
     recipients email
-    from "Foreman-noreply@" + Facter.domain
+    default_headers
+
     subject "Summary Puppet report from Foreman"
-    sent_on Time.now
     time = options[:time] || 1.day.ago
-    content_type "text/html"
     body[:hosts] = Report.summarise(time, hosts.all).sort
     body[:timerange] = time
     body[:out_of_sync] = hosts.out_of_sync
@@ -48,15 +45,41 @@ class HostMailer < ActionMailer::Base
 
   def error_state(report)
     host = report.host
+    email_to_owners host
+    default_headers
+
+    subject "Puppet error on #{host.to_label}"
+    body[:report] = report
+    body[:host] = host
+  end
+
+  def mismatched_facts host, mismatched
+    check_foreman_url
+    email_to_owners host
+    default_headers
+
+    subject "Inconsistent facts for #{host.name}"
+    body :facts => mismatched, :host => host
+  end
+
+  private
+
+  def default_headers
+    from         "Foreman-noreply@" + Facter.domain
+    sent_on      Time.now
+    content_type "text/html"
+  end
+
+  def email_to_owners host
     email = host.owner.recipients if SETTINGS[:login] and not host.owner.nil?
     email = SETTINGS[:administrator] if email.empty?
     raise "unable to find recipients" if email.empty?
     recipients email
-    from "Foreman-noreply@" + Facter.domain
-    subject "Puppet error on #{host.to_label}"
-    sent_on Time.now
-    content_type "text/html"
-    body[:report] = report
-    body[:host] = host
+  end
+
+  def check_foreman_url
+    if (body[:url] = SETTINGS[:foreman_url]).empty?
+      raise ":foreman_url: entry in Foreman configuration file, see http://theforeman.org/projects/foreman/wiki/Mail_Notifications"
+    end
   end
 end

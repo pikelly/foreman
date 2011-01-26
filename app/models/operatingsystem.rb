@@ -68,9 +68,13 @@ class Operatingsystem < ActiveRecord::Base
              ).normalize
   end
 
+  def release
+    "#{major}#{('.' + minor) unless minor.empty?}"
+  end
+
   # The OS is usually represented as the catenation of the OS and the revision. E.G. "Solaris 10"
   def to_label
-    "#{name} #{major}#{('.' + minor) unless minor.empty?}"
+    "#{name} #{release}"
   end
 
   def to_s

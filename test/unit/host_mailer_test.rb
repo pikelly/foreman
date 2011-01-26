@@ -74,4 +74,12 @@ class HostMailerTest < ActionMailer::TestCase
     assert HostMailer.deliver_summary(@options).body.include?(@host.name)
   end
 
+  test "mail should report mismatched fact" do
+    as_admin do
+      @host.owner = users(:one)
+      @host.save
+    end
+    mail = HostMailer.deliver_mismatched_facts(@host, [{:factname => "ipaddress", :foreman_val => @host.ip, :fact_val => "1.1.1.1"}])
+    mail.body.include?("1.1.1.1")
+  end
 end

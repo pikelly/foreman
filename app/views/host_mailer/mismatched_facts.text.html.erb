@@ -1,0 +1,27 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html>
+  <head>
+    <meta content="text/html; charset=UTF-8" http-equiv="Content-Type" />
+    <title>Mismatched facts for <%= @host.to_label %></title>
+  </head>
+  <body style="background-color: #ffffff;">
+    The information retrieved by puppet for <%= link_to @host, :controller => :hosts, :action => :index, :id => @host.id -%> shows that foreman has incorrect values for the following facts.
+    <table>
+      <tr><th>Fact</th><th>Forman value</th><th>Factor value</th></tr>
+      <% for facthash in @facts %>
+        <tr>
+          <td>
+            <%= facthash[:factname] -%>
+          </td>
+          <td>
+            <%= facthash[:foreman_val] -%>
+          </td>
+          <td>
+            <%= facthash[:fact_val] -%>
+          </td>
+        </tr>
+      <% end %>
+    </table>
+    You should investigate this and update the Foreman database with the corrected information
+  </body>
+</html>

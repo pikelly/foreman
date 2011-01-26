@@ -328,22 +328,54 @@ class Host < Puppet::Rails::Host
     return true unless last_compile.nil? or (last_compile + 1.minute < time)
 
     self.last_compile = time
-    # save all other facts - pre 0.25 it was called setfacts
-    respond_to?("merge_facts") ? self.merge_facts(facts.values) : self.setfacts(facts.values)
-    save(false)
 
-    # we want to import other information only if this host was never installed via Foreman
-    populateFieldsFromFacts if installed_at.nil?
+    # Check that foreman values match the facts if the host was installed via foreman
+    if validate_facts(facts.values)
 
-    # we are saving here with no validations, as we want this process to be as fast
-    # as possible, assuming we already have all the right settings in Foreman.
-    # If we don't (e.g. we never install the server via Foreman, we populate the fields from facts
-    # TODO: if it was installed by Foreman and there is a mismatch,
-    # we should probably send out an alert.
-    return self.save(false)
+      # save all other facts - pre 0.25 it was called setfacts
+      respond_to?("merge_facts") ? self.merge_facts(facts.values) : self.setfacts(facts.values)
+      save(false)
 
+      # we want to import other information only if this host was never installed via Foreman
+      populateFieldsFromFacts if installed_at.nil?
+
+      # we are saving here with no validations, as we want this process to be as fast
+      # as possible, assuming we already have all the right settings in Foreman.
+      # If we don't (e.g. we never install the server via Foreman, we populate the fields from facts
+      # TODO: if it was installed by Foreman and there is a mismatch,
+      # we should probably send out an alert.
+      self.save(false)
+    else
+      false
+    end
   rescue Exception => e
     logger.warn "Failed to save #{facts.name}: #{e}"
+    false
+  end
+
+  def validate_facts facts
+    fact_map = {"ip" => "ipaddress", "mac" => "macaddress", "operatingsystem.name" => "operatingsystem", "operatingsystem.release" => "operatingsystemrelease"}
+    mismatched = []
+    # This line requires a custom puppet fact that maps the gateway interface mac, which is generally the correct ethernet interface
+    fact_map[:mac] = "macaddress_#{facts["gateway_if"].downcase}" if facts.has_key? "gateway_if"
+    for foreman_key, fact_key in fact_map do
+      unless facts.has_key? fact_key
+        logger.warn "Received a puppet report from #{name} with no #{fact_key} value"
+        false
+      else
+        # If the host has not yet been initialised then the eval will fail. This is not an error but the test must be skipped.
+        foreman_val = eval(foreman_key) rescue nil
+        if (fact_val = facts[fact_key]) and !foreman_val.empty?
+          fact_val = fact_val.split(":").map{|nibble| "%02x" % ("0x" + nibble)}.join(":") if foreman_key == "mac"
+          unless fact_val.downcase == foreman_val.downcase
+            mismatched << {:factname => fact_key, :foreman_val => foreman_val, :fact_val => fact_val}
+            logger.warn "Received a puppet report from #{name} with a contradictory #{foreman_key.gsub(/\./, " ")}: Foreman => #{foreman_val}, Facter => #{fact_val}"
+          end
+        end
+      end
+    end
+    HostMailer.deliver_mismatched_facts(self, mismatched) if !mismatched.empty? and !disabled? and not build!
+    true
   end
 
   def fv name

@@ -17,3 +17,9 @@ ubuntu1010:
   major: 10
   minor: 10
   type: Debian
+
+ubuntu9_04:
+  name: Ubuntu
+  major: 9
+  minor: "04"
+  type: Debian
