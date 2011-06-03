@@ -65,8 +65,10 @@ module Orchestration
 
     private
     def proxy_error e
-      (e.respond_to?(:response) and !e.response.nil?) ? e.response : e
+      head = (e.respond_to?(:http_code) and (e.http_code == 409)) ? "CONFLICT:" : ""
+      head + ((e.respond_to?(:response) and !e.response.nil?) ? e.response : e)
     end
+
     # Handles the actual queue
     # takes care for running the tasks in order
     # if any of them fail, it rollbacks all completed tasks

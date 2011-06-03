@@ -3,6 +3,9 @@
   <%= link_to "Show", @host %>
   <%= link_to "View All", hosts_path %>
   <%= display_link_if_authorized (@host.managed? ? "Unmanage host" : "Manage host"), hash_for_toggle_manage_host_path(:id => @host.name), {:method => :put} %>
+  <% unless @host.new_record? %>
+    <%= link_to "Repair",validate_host_path(@host), :id => "conflicts", :title => "Compare network databases against the values on this page" -%>
+  <% end  %>
 </span>
 
 <%= render :partial => 'form' %>

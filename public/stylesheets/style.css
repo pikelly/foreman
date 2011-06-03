@@ -50,10 +50,10 @@
     margin: 0 -2px 0 0;
 }
 
-* {margin:0;padding:0;} 
+* {margin:0;padding:0;}
 
-/* must declare 0 margins on everything, also for main layout components use padding, not 
-vertical margins (top and bottom) to add spacing, else those margins get added to total height 
+/* must declare 0 margins on everything, also for main layout components use padding, not
+vertical margins (top and bottom) to add spacing, else those margins get added to total height
 and your footer gets pushed down a bit more, creating vertical scroll bars in the browser */
 
 html, body {height: 100%;}
@@ -69,7 +69,7 @@ html, body {height: 100%;}
 	clear:both;
 	color: #000;
 	background: url(../images/header_bg.png) repeat-x 0 -10%;
-} 
+}
 #footer p {
 	line-height: 1em;
 	margin: 0 !important;
@@ -138,7 +138,7 @@ fieldset legend {
   -webkit-border-radius: 5px;
   -moz-border-radius: 5px;
   border-radius: 5px;
-  margin-left: 18px;  
+  margin-left: 18px;
   padding: 4px;
 }
 fieldset fieldset {
@@ -150,8 +150,8 @@ fieldset fieldset {
 #header {
 	height:5em;
 	background-color:#FFF;
-	color:#000; 
-	position:relative; 
+	color:#000;
+	position:relative;
 	background: url(../images/header_bg.png) repeat-x;
 }
 
@@ -631,3 +631,7 @@ a.button:active span {
 .grey {
   color:#aaa;
 }
+
+#conflicts-content div.arec, #conflicts-content div.iprec { color: CornflowerBlue ;}
+#conflicts-content div.prec, #conflicts-content div.macrec{ color: BurlyWood ;}
+#conflicts-content li { list-style-type: none;}

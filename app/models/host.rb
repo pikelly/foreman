@@ -102,6 +102,8 @@ class Host < Puppet::Rails::Host
   alias_attribute :hostname, :name
   alias_attribute :fqdn, :name
 
+  attr_accessor :collision
+
   validates_uniqueness_of  :name
   validates_presence_of    :name, :environment_id
   if SETTINGS[:unattended].nil? or SETTINGS[:unattended]
@@ -438,6 +440,67 @@ class Host < Puppet::Rails::Host
     self.save
   end
 
+  # Resolves network database collisions and omissions
+  # This operates in two modes; clearing and repairing.
+  # When repairing we add back missing entry and correct wrong ones
+  # When clearing we remove ALL entries that we need during the following save operation
+  def repair
+    unless initialize_dhcp
+      errors.add_to_base "Unable to connect to the DHCP server"
+      return false
+    end
+    # We need to get the boot server from this source
+    unless initialize_tftp
+      errors.add_to_base "Unable to connect to the DHCP server"
+      return false
+    end
+
+    delDHCP mac if collision.dhcp_mac_ip_collision
+    setDHCP     if collision.repairing and collision.dhcp_entry_missing
+    delDHCP ip  if collision.dhcp_entry_broken
+    delDHCP mac if collision.clearing? and collision.dhcp_mac_ip_entry
+    delDHCP ip  if collision.clearing? and collision.dhcp_ip_mac_entry and !collision.dhcp_same_entry?
+
+    unless initialize_dns
+      errors.add_to_base "Unable to connect to the DNS server"
+      return false
+    end
+
+    delDNSPtr ip                            if collision.dns_ip_collision
+    delDNSRecord collision.dns_ip_collision if collision.dns_ip_secondary_collision
+    delDNSPtr collision.dns_ip_secondary_collision if collision.dns_ip_secondary_collision and collision.dns_ip_secondary_collision != ip
+
+    # --->                                                                              There is no point in doing it twice
+    delDNSRecord name                         if collision.dns_name_collision           and (name != collision.dns_ip_collision)
+    delDNSPtr    collision.dns_name_collision if collision.dns_name_secondary_collision and (ip   != collision.dns_name_collision)
+    delDNSRecord collision.dns_name_secondary_collision if collision.dns_name_secondary_collision and collision.dns_name_secondary_collision != name
+
+    setDNSRecord if collision.dns_name_missing and collision.repairing
+    setDNSPtr    if collision.dns_ip_missing   and collision.repairing
+
+    delDNSRecord if collision.dns_name_entry and collision.clearing?
+    delDNSPtr    if collision.dns_ip_entry   and collision.clearing?
+
+    errors.empty?
+  end
+
+  class NetDBError < StandardError; end
+  # Compares the DHCP and DNS values for this host with those in the network databases.
+
+  def collisions validate=nil
+    dns_conflicts = dhcp_conflicts = {}
+    # Validate the DNS and DHCP entries and accumulate self.errors
+    timeout(10){
+      raise "Domain information missing" unless dns?
+      raise "Subnet information missing" unless dhcp?
+      if initialize_dns and dns_conflicts = interrogate_dns and initialize_dhcp and dhcp_conflicts = interrogate_dhcp
+        self.collision = Collision.new self, dns_conflicts, dhcp_conflicts
+      end
+    }
+    collision.calculate if validate
+    collision
+  end
+
   # counts each association of a given host
   # e.g. how many hosts belongs to each os
   # returns sorted hash
@@ -535,6 +598,27 @@ class Host < Puppet::Rails::Host
     !sp_name.empty? and !sp_ip.empty? and !sp_mac.empty?
   end
 
+  # ensure that host name is fqdn
+  # if the user input short name, the domain name will be appended
+  # this is done to ensure compatibility with puppet storeconfigs
+  def normalize_hostname
+    # no hostname was given or a domain was selected, since this is before validation we need to ignore
+    # it and let the validations to produce an error
+    return if name.empty?
+
+    if domain.nil? and name.match(/\./)
+      # try to assign the domain automatically based on our existing domains from the host FQDN
+      self.domain = Domain.all.select{|d| name.match(d.name)}.first rescue nil
+    else
+      # if our host is in short name, append the domain name
+      self.name += ".#{domain}" unless name =~ /.#{domain}$/i
+    end
+  end
+
+  def netdb_conflicts_only?
+    !errors.empty? and errors.full_messages.grep(/CONFLICT/) == errors.full_messages
+  end
+
   private
   # align common mac and ip address input
   def normalize_addresses
@@ -563,20 +647,4 @@ class Host < Puppet::Rails::Host
     self.ip, self.sp_ip = helper
   end
 
-  # ensure that host name is fqdn
-  # if the user inputed short name, the domain name will be appended
-  # this is done to ensure compatibility with puppet storeconfigs
-  def normalize_hostname
-    # no hostname was given or a domain was selected, since this is before validation we need to ignore
-    # it and let the validations to produce an error
-    return if name.empty?
-
-    if domain.nil? and name.match(/\./)
-      # try to assign the domain automaticilly based on our existing domains from the host FQDN
-      self.domain = Domain.all.select{|d| name.match(d.name)}.first rescue nil
-    else
-      # if our host is in short name, append the domain name
-      self.name += ".#{domain}" unless name =~ /.#{domain}$/i
-    end
-  end
 end

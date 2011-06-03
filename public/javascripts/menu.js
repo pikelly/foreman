@@ -127,6 +127,7 @@ $(function(){
   $(".title_action a").button();
   $("h1").addClass("title_action_header");
   $('input[type|="submit"]').button();
+  $('a[type="cancel"]').button();
 });
 
 

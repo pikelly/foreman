@@ -57,7 +57,7 @@ class HostParameterTest < ActiveSupport::TestCase
     end
     record = HostParameter.create :name => "dummy", :value => "value", :reference_id => hosts(:one).id
     assert record.valid?
-    assert record.new_record?
+    assert !record.new_record?
   end
 
   test "user with create permissions should not be able to create when not permitted" do

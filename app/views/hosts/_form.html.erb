@@ -1,5 +1,8 @@
+<%= javascript "host_conflicts" %>
 <% form_for @host do |f| %>
   <%= f.error_messages %>
+
+  <%= hidden_field_tag :original_id, @host.id -%>
 
   <% field_set_tag 'Primary settings' do -%>
     <div class="span-5">
@@ -70,5 +73,5 @@
     </div>
   <% end -%>
 
-  <%= f.submit "Submit" %>
+  <%= f.submit "Submit", :id => "main-form-submit" %>
 <% end %>

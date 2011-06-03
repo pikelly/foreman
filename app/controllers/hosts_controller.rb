@@ -12,6 +12,7 @@ class HostsController < ApplicationController
 
   before_filter :find_hosts, :only => :query
   before_filter :ajax_methods, :only => [:hostgroup_or_environment_selected]
+  before_filter :load_collision, :only => [:repair, :overwrite]
   before_filter :find_multiple, :only => [:update_multiple_parameters, :multiple_build,
     :select_multiple_hostgroup, :select_multiple_environment, :multiple_parameters, :multiple_destroy,
     :multiple_enable, :multiple_disable, :submit_multiple_disable, :submit_multiple_enable, :update_multiple_hostgroup,
@@ -19,7 +20,7 @@ class HostsController < ApplicationController
   before_filter :find_by_name, :only => %w[show edit update destroy puppetrun setBuild cancelBuild report
     reports facts storeconfig_klasses clone externalNodes pxe_config toggle_manage]
   after_filter :disconnect_from_hypervisor, :only => :hypervisor_selected
-
+  after_filter :clear_collision, :except => [:validate, :update, :create]
   filter_parameter_logging :root_pass
   helper :hosts, :reports
 
@@ -87,10 +88,20 @@ class HostsController < ApplicationController
     if @host.save
       process_success :success_redirect => @host
     else
-      load_vars_for_ajax
+      fix_netdb
+    end
+  end
+
+  def fix_netdb
+    load_vars_for_ajax
+    if @host.netdb_conflicts_only?
+      session[:collision] = @host.collisions
+      render  :partial => "fix_netdb_confirmation", :locals => {:host => @host}, :layout => true
+    else
       process_error
     end
   end
+  private :fix_netdb
 
   def edit
     load_vars_for_ajax
@@ -101,8 +112,7 @@ class HostsController < ApplicationController
     if @host.update_attributes(params[:host])
       process_success :success_redirect => @host
     else
-      load_vars_for_ajax
-      process_error
+      fix_netdb
     end
   end
 
@@ -114,7 +124,64 @@ class HostsController < ApplicationController
     end
   end
 
+  def overwrite
+    load_vars_for_ajax
+    forward_request_url
+    if @host.repair()
+      if @host.save
+        notice "Successfuly created host"
+        redirect_to @host
+      else
+        render :action => :new
+      end
+    else
+      error "Failed to clear conflicting network entries"
+      render :action => :new
+    end
+  end
   # form AJAX methods
+
+  # Display the host's conflicts
+  def validate
+    unless @host = Host.find_by_name(params[:id])
+      render :text => "Unable to find the host named #{params[:id]}" and return
+    end
+    session[:collision] = @host.collisions(true)
+
+    render :partial => "conflict", :locals => {:collision => @host.collision}
+  end
+
+  # Resolve the host's conflicts
+  # @host contains the host built from the session's collision item
+  def repair
+    if @host.repair()
+      head 200
+    else
+      head 400
+    end
+  ensure
+    session[:collision] = nil
+  end
+
+  def load_collision
+  # Using a session variable ensures that we provide no API to directly modify network databases
+    collision = session[:collision]
+    # Let us be very sure that we are operating on the same collision object
+    unless ((collision.check == params[:remove][:check].to_i ) rescue nil)
+      error "Unable to proceed. Something went wrong with the session's collision object."
+      redirect_to hosts_path
+      return false
+    end
+    attributes = collision.host.marshal_dump
+    attributes.delete :environment # Why do I have to do this?
+    # The host may be a new or an edited host
+    @host = Host.find_or_initialize_by_id(attributes[:id], attributes)
+    @host.collision = collision
+  end
+
+  def clear_collision
+    session[:collision] = nil
+  end
 
   def domain_selected
     assign_parameter "domain"

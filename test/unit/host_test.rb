@@ -334,5 +334,128 @@ class HostTest < ActiveSupport::TestCase
 
    assert_equal "2", h.diskLayout
  end
+  def stub_resolver_dhcp
+    unless SETTINGS[:unattended]
+      puts "Skipping test as unattended is not set"
+      return false
+    end
+    stub_dhcp
+    stub_resolver
+    return true
+  end
+  def stub_resolver
+    Resolv::DNS.any_instance.stubs(:getaddress).with("myname.mydomain.net").returns("2.3.4.1")
+    Resolv::DNS.any_instance.stubs(:getname).with("2.3.4.1").returns("myname.mydomain.net")
+
+    Resolv::DNS.any_instance.stubs(:getaddress).with("temp.yourdomain.net").returns("2.3.4.5")
+    Resolv::DNS.any_instance.stubs(:getname).with("2.3.4.5").returns("temp.yourdomain.net")
+
+    Resolv::DNS.any_instance.stubs(:getaddress).with("otherfullhost.mydomain.net").raises(Resolv::ResolvError)
+    Resolv::DNS.any_instance.stubs(:getname).with("2.3.4.6").raises(Resolv::ResolvError)
+  end
+
+  test "DNS collisions with no collisions" do
+    return true unless stub_resolver_dhcp
+    host = hosts(:otherfullhost)
+    host.send :normalize_addresses
+    collision = host.collisions
+    assert !collision.dns_collisions?
+  end
+
+  test "DNS collisions when ip conflicts" do
+    return true unless stub_resolver_dhcp
+    host      = hosts(:one)
+    host.ip   = "2.3.4.5"
+    host.send :normalize_addresses
+    collision = host.collisions
+    assert collision.dns_ip_collision == "temp.yourdomain.net"
+    assert collision.dns_ip_secondary_collision == "2.3.4.5"
+  end
+
+  test "DNS collisions when hostname conflicts" do
+    return true unless stub_resolver_dhcp
+    host      = hosts(:one)
+    host.name = "temp.yourdomain.net"
+    host.send :normalize_addresses
+    collision = host.collisions
+    assert collision.dns_name_collision == "2.3.4.5"
+    assert collision.dns_name_secondary_collision == "temp.yourdomain.net"
+  end
+
+  def stub_dhcp
+    ProxyAPI::DHCP.any_instance.stubs(:record).with("2.3.4.0", "aa:bb:cc:dd:ee:ee").returns({"12" => "myname.mydomain.net", "ip" => "2.3.4.1", "mac" => "aa:bb:cc:dd:ee:ee"})
+    ProxyAPI::DHCP.any_instance.stubs(:record).with("2.3.4.0", "2.3.4.1").returns({"12" => "myname.mydomain.net", "ip" => "2.3.4.1", "mac" => "aa:bb:cc:dd:ee:ee"})
+
+    ProxyAPI::DHCP.any_instance.stubs(:record).with("2.3.4.0", "aa:bb:cc:dd:ee:ff").returns({"12" => "temp.yourdomain.net", "ip" => "2.3.4.5", "mac" => "aa:bb:cc:dd:ee:ff"})
+    ProxyAPI::DHCP.any_instance.stubs(:record).with("2.3.4.0", "2.3.4.5").returns({"12" => "temp.yourdomain.net", "ip" => "2.3.4.5", "mac" => "aa:bb:cc:dd:ee:ff"})
+
+    ProxyAPI::DHCP.any_instance.stubs(:record).with("2.3.4.0", "aa:bb:ec:dd:ee:11").returns(false)
+    ProxyAPI::DHCP.any_instance.stubs(:record).with("2.3.4.0", "2.3.4.6").returns(false)
+  end
+
+  test "DHCP collisions with no collisions" do
+    return true unless stub_resolver_dhcp
+    host      = hosts(:otherfullhost)
+    host.send :normalize_addresses
+    collision = host.collisions
+    assert collision.dhcp_collisions? == false
+  end
+
+  test "DHCP collisions when MAC conflics" do
+    return true unless stub_resolver_dhcp
+    host      = hosts(:one)
+    host.send :normalize_addresses
+    host.mac  = "aa:bb:cc:dd:ee:ff"
+    collision = host.collisions
+    assert collision.dhcp_mac_ip_collision== "2.3.4.5"
+  end
+
+  test "DHCP collisions when IP conflicts" do
+    return true unless stub_resolver_dhcp
+    host      = hosts(:one)
+    host.send :normalize_addresses
+    host.ip   = "2.3.4.5"
+    collision = host.collisions
+    assert  collision.dhcp_ip_mac_collision == "aa:bb:cc:dd:ee:ff"
+  end
+
+  test "collisions fails on invalid domain" do
+    host = hosts(:one)
+    host.domain.dns.url = ""
+    assert_raise(RuntimeError){host.collisions}
+  end
+
+  test "collisions fails on invalid subnet" do
+    host = hosts(:one)
+    host.subnet.dhcp.url = ""
+    assert_raise(RuntimeError){ host.collisions }
+  end
+
+  def stub_resolve
+    Host.any_instance.expects(:delDHCP).with("2.3.4.1").once
+    Host.any_instance.expects(:delDHCP).with("aa:bb:cc:dd:ee:ee").twice
+    ProxyAPI::DNS.any_instance.expects(:delete).with("1.4.3.2.in-addr.arpa").twice
+    ProxyAPI::DNS.any_instance.expects(:delete).with("myname.mydomain.net").twice
+    ProxyAPI::DNS.any_instance.expects(:delete).with("a.bogus.com").once
+    ProxyAPI::DNS.any_instance.expects(:delete).with("6.6.5.4.in-addr.arpa").once
+    ProxyAPI::DNS.any_instance.expects(:delete).with("7.6.5.4.in-addr.arpa").once
+    ProxyAPI::DNS.any_instance.expects(:delete).with("b.bogus.com").once
+  end
+
+  test "resolve removes requested entries" do
+    unless SETTINGS[:unattended]
+      puts "Skipping test as unattended is not set"
+      return true
+    end
+    stub_resolve
+    host = hosts(:one) # name => "myname.mydomain.net", ip => "2.3.4.1", :mac => "aabbCCddeeee"
+    host.send :normalize_addresses
+    dns_collisions  = {"2.3.4.1" => "a.bogus.com", "myname.mydomain.net" => "4.5.6.7", "a.bogus.com" => "4.5.6.6", "4.5.6.7" => "b.bogus.com"}
+    dhcp_collisions = {"2.3.4.1"           => {"12" => "a.bogus.com", "mac" => "bb:cc:dd:ee:ff:aa", "ip" => "2.3.4.1"},
+                       "aa:bb:cc:dd:ee:ee" => {"12" => "b.bogus.com", "mac" => "aa:bb:cc:dd:ee:ee", "ip" => "4.5.6.7"}}
+    host.collision = Collision.new(host, dns_collisions, dhcp_collisions)
+    result = host.repair
+    assert result != false
+  end
 
 end

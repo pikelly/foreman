@@ -83,7 +83,7 @@ module Orchestration::TFTP
       @initrd  = "#{prefix}-#{pxefiles[:initrd]}"
       pxe_render configTemplate({:kind => os.template_kind}).template
     rescue => e
-      failure "Failed to generate #{os.template_kind} template: #{e}"
+      failure "Failed to generate #{os.template_kind} template: #{e}", e.backtrace
     end
 
     #returns the URL for Foreman based on the required action

@@ -17,7 +17,9 @@ module ProxyAPI
       if url.match(/^https/i)
         cert         = Setting[:ssl_certificate]
         ca_cert      = Setting[:ssl_ca_file]
-        hostprivkey  = Setting[:ssl_private_key]
+        hostprivkey  = Setting[:ssl_priv_key]
+
+        raise "Missing SSL parameters in Settings" if cert.nil? or ca_cert.nil? or hostprivkey.nil?
 
         # Use update rather than merge! as this is not rails dependent
         connect_params.update(
@@ -149,11 +151,14 @@ module ProxyAPI
     end
 
     # Retrieves a DHCP entry
-    # [+subnet+] : String in dotted decimal format
-    # [+mac+]    : String in coloned sextuplet format
-    # Returns    : Hash or false
-    def record subnet, mac
-      parse get("#{subnet}/#{mac}")
+    # [+subnet+]    : String in dotted decimal format
+    # [+ip_or_mac+] : String
+    # Returns       : Hash or false
+    def record subnet, ip_or_mac
+      parse get("#{subnet}/#{ip_or_mac}")
+    rescue RestClient::ResourceNotFound
+      # It is OK for there to be no record at that address
+      return false
     end
 
     # Sets a DHCP entry

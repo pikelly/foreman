@@ -20,10 +20,11 @@ module Orchestration::DNS
     protected
 
     def initialize_dns
-      return unless dns?
+      return false unless dns?
       @dns      ||= ProxyAPI::DNS.new(:url => domain.dns.url )
       @resolver ||= Resolv::DNS.new :search => domain.name, :nameserver => domain.nameservers, :ndots => 1
-    rescue => e
+      @dns and @resolver
+    rescue StandardError, Timeout::Error=> e
       failure "Failed to initialize the DNS proxy: #{e}"
     end
 
@@ -39,26 +40,26 @@ module Orchestration::DNS
     # Adds the host to the reverse DNS zone
     # +returns+ : Boolean true on success
     def setDNSPtr
-      logger.info "{#{User.current.login}}Add the Reverse DNS records for #{name}/#{to_arpa}"
-      dns.set(:fqdn => name, :value => to_arpa, :type => "PTR")
+      logger.info "{#{User.current.login}}Add the Reverse DNS records for #{name}/#{to_arpa ip}"
+      dns.set(:fqdn => name, :value => to_arpa(ip), :type => "PTR")
     rescue => e
       failure "Failed to create the Reverse DNS record: #{proxy_error e}"
     end
 
     # Removes the host from the forward DNS zones
     # +returns+ : Boolean true on success
-    def delDNSRecord
-      logger.info "{#{User.current.login}}Delete the DNS records for #{name}/#{ip}"
-      dns.delete(name)
+    def delDNSRecord hostname=name
+      logger.info "{#{User.current.login}}Delete the DNS record for #{hostname}"
+      dns.delete(hostname)
     rescue => e
       failure "Failed to delete the DNS record: #{proxy_error e}"
     end
 
     # Removes the host from the forward DNS zones
     # +returns+ : Boolean true on success
-    def delDNSPtr
-      logger.info "{#{User.current.login}}Delete the DNS reverse records for #{name}/#{to_arpa}"
-      dns.delete(to_arpa)
+    def delDNSPtr address=ip
+      logger.info "{#{User.current.login}}Delete the DNS reverse record for #{to_arpa address}"
+      dns.delete(to_arpa address)
     rescue => e
       failure "Failed to delete the reverse DNS record: #{proxy_error e}"
     end
@@ -66,13 +67,14 @@ module Orchestration::DNS
     private
 
     # Returns: String containing the ip in the in-addr.arpa zone
-    def to_arpa
-      ip.split(/\./).reverse.join(".") + ".in-addr.arpa"
+    def to_arpa address
+      address.split(/\./).reverse.join(".") + ".in-addr.arpa"
     end
 
     def validate_dns
       return unless dns?
       return if Rails.env == "test"
+      #return true # DEBUGDEBUGDEBUG
       # limit DNS validations to 3 seconds
       Timeout::timeout(3) do
         new_record? ? validate_dns_on_create : validate_dns_on_update
@@ -81,11 +83,39 @@ module Orchestration::DNS
       failure "Timeout querying DNS: #{e}"
     end
 
+    def dns_find key
+      if key =~ /\d{1,3}(\.\d{1,3}){3}/
+        resolver.getname(key).to_s
+      else
+        resolver.getaddress(key).to_s
+      end
+    rescue Resolv::ResolvError
+      false
+    end
+
+    def interrogate_dns
+      collisions = {}
+      fname = "#{name}#{"." + domain.name if domain and name !~ /\./}"
+      address = dns_find(fname)
+      collisions[fname] = address
+      if address and hostname = dns_find(address)
+        collisions[address] = hostname
+      end
+      hostname = dns_find(ip)
+      collisions[ip] = hostname
+      if hostname and address = dns_find(hostname)
+        collisions[hostname] = address
+      end
+      collisions
+    rescue => e
+      failure "Failed to query DNS: #{e}"
+    end
+
     def validate_dns_on_create
-      if (address = resolver.getaddress(name) rescue false)
+      if address = dns_find(name)
         failure "#{name} is already in DNS with an address of #{address}"
       end
-      if (hostname = resolver.getname(ip) rescue false)
+      if hostname = dns_find(ip)
         failure "#{ip} is already in the DNS with a name of #{hostname}"
       end
     rescue => e
@@ -93,18 +123,14 @@ module Orchestration::DNS
     end
 
     def validate_dns_on_update
-      # this block is not executed at the moment
-      # it does not help to complain that the record does not exist
-      # TODO: setup some dialog allowing the user to fix it.
-      return
-      if (address = resolver.getaddress(name).to_s) != ip
-        failure "#{name} DNS record ip #{address} does not match #{ip}"
+      if address = dns_find(name)
+        failure "#{name} DNS record ip #{address} does not match #{ip}" unless address == ip
       end
-      if (hostname = resolver.getname(ip).to_s) != name
-        failure "#{ip} PTR record is #{hostname} expecting #{name}"
+      if hostname = dns_find(ip)
+        failure "#{ip} PTR record is #{hostname} expecting #{name}" unless hostname == name
       end
-    rescue Resolv::ResolvError => e
-      failure e.to_s
+    rescue => e
+      failure "Failed to query DNS: #{e}"
     end
 
     def queue_dns

@@ -111,6 +111,10 @@ class DomainTest < ActiveSupport::TestCase
     setup_user "destroy"
     record =  Domain.first
     record.subnets.clear
+    as_admin{
+      record.hosts.clear
+    }
+    record = Domain.first
     assert record.destroy
     assert record.frozen?
   end

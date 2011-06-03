@@ -18,7 +18,7 @@ module Orchestration::DHCP
     protected
 
     def initialize_dhcp sub = nil
-      return unless dhcp?
+      return false unless dhcp?
       # there are usage cases where our object is saved across subnets
       # i.e. management port is not on the same subnet
       sub ||= subnet
@@ -28,23 +28,29 @@ module Orchestration::DHCP
     end
 
     # Retrieves the DHCP entry for this host via a lookup on the MAC
+    # and optionally the ip
     # Returns: Hash  Example {
     #   "mac"       :"22:33:44:55:66:11"
     #   "nextServer":"192.168.122.1"
     #   "title"     :"some.host.name"
     #   "filename"  :"pxelinux.0"
     #   "ip"        :"192.168.122.4"}
-    def getDHCP
+    # or an array of two hashes
+    def getDHCP both=false
+      logger.info "Query a DHCP reservation for #{name}/#{mac}"
+      via_mac = dhcp.record subnet.network, mac
+      return via_mac unless both
       logger.info "Query a DHCP reservation for #{name}/#{ip}"
-      dhcp.record subnet.network, mac
+      via_ip = dhcp.record subnet.network, ip
+      return via_mac, via_ip
     rescue => e
       failure "Failed to read the DHCP record: #{proxy_error e}"
     end
 
     # Deletes the DHCP entry for this host
-    def delDHCP
+    def delDHCP mac_or_ip=mac
       logger.info "{#{User.current.login}}Delete the DHCP reservation for #{name}/#{ip}"
-      dhcp.delete subnet.network, mac
+      dhcp.delete subnet.network, mac_or_ip
     rescue => e
       failure "Failed to delete the DHCP record: #{proxy_error e}"
     end
@@ -77,6 +83,18 @@ module Orchestration::DHCP
       failure "Failed to set the Service Processor DHCP record: #{proxy_error e}"
     end
 
+    def interrogate_dhcp
+      collisions = {}
+
+      entry_via_mac, entry_via_ip = getDHCP(true)
+      collisions[mac] = entry_via_mac if entry_via_mac
+      collisions[ip]  = entry_via_ip  if entry_via_ip
+
+      collisions
+    rescue => e
+      failure "Failed to query the DHCP: #{e}"
+    end
+
     private
 
     # where are we booting from
@@ -97,7 +115,7 @@ module Orchestration::DHCP
       return bs unless bs.blank?
       failure "Unable to determine the host's boot server. The DHCP smart proxy failed to provide this information and this subnet is not provided with TFTP services."
     rescue => e
-      failure "failed to detect boot server: #{e}"
+      failure "Failed to detect boot server: #{e}"
     end
 
     def queue_dhcp
