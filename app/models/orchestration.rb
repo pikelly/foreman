@@ -6,6 +6,7 @@ module Orchestration
     base.send :include, InstanceMethods
     base.class_eval do
       attr_reader :queue, :old
+      attr_accessor :test_process_code
       # stores actions to be performed on our proxies based on priority
       before_validation :set_queue
       before_validation :setup_clone
@@ -25,28 +26,35 @@ module Orchestration
 
   module InstanceMethods
 
+    include Orchestration::Common
     protected
 
     def on_save
-      process queue
+      #queue should always be set, but when testing and you have stubbed valid?, queue may be nil
+      queue.process self if queue
     end
 
     def on_destroy
-      errors.empty? ? process(queue) : false
-    end
-
-    def rollback
-      raise ActiveRecord::Rollback
-    end
-
-    # log and add to errors
-    def failure msg, backtrace=nil
-      logger.warn(backtrace ? msg + backtrace.join("\n") : msg)
-      errors.add_to_base msg
-      false
+      errors.empty? ? queue.process(self) : false
     end
 
     public
+
+    # Rebuilds the host's network database entries based upon the ConflictList object
+    def regenerate conflicts
+      return false unless initialize_dns
+      return false unless initialize_dhcp
+      return false if tftp? and !initialize_tftp
+
+      set_queue
+
+      for conflict in conflicts.cleanup(:regenerate)
+        conflict.regenerate self
+      end
+      return false unless errors.empty?
+
+      run_queue
+    end
 
     # we override this method in order to include checking the
     # after validation callbacks status, as rails by default does
@@ -64,79 +72,6 @@ module Orchestration
     end
 
     private
-    def proxy_error e
-      (e.respond_to?(:response) and !e.response.nil?) ? e.response : e
-    end
-    # Handles the actual queue
-    # takes care for running the tasks in order
-    # if any of them fail, it rollbacks all completed tasks
-    # in order not to keep any left overs in our proxies.
-    def process q
-      return true if Rails.env == "test"
-      # queue is empty - nothing to do.
-      return if q.empty?
-
-      # process all pending tasks
-      q.pending.each do |task|
-        # if we have failures, we don't want to process any more tasks
-        next unless q.failed.empty?
-        task.status = "running"
-        begin
-          task.status = execute({:action => task.action}) ? "completed" : "failed"
-
-        rescue => e
-          task.status = "failed"
-          failed "failed #{e}"
-        end
-      end
-
-      # if we have no failures - we are done
-      return true if q.failed.empty? and q.pending.empty? and errors.empty?
-
-      logger.debug "Rolling back due to a problem: #{q.failed}"
-      # handle errors
-      # we try to undo all completed operations and trigger a DB rollback
-      (q.completed + q.running).sort.reverse_each do |task|
-        begin
-          task.status = "rollbacked"
-          execute({:action => task.action, :rollback => true})
-        rescue => e
-          # if the operation failed, we can just report upon it
-          failed "Failed to perform rollback on #{task.name} - #{e}"
-        end
-      end
-
-      rollback
-    end
-
-    def execute opts = {}
-      obj, met = opts[:action]
-      rollback = opts[:rollback] || false
-      # at the moment, rollback are expected to replace set with del in the method name
-      if rollback
-        met = met.to_s
-        case met
-        when /set/
-          met.gsub!("set","del")
-        when /del/
-          met.gsub!("del","set")
-        else
-          raise "Dont know how to rollback #{met}"
-        end
-        met = met.to_sym
-      end
-      if obj.respond_to?(met)
-        return obj.send(met)
-      else
-        failed "invalid method #{met}"
-        raise "invalid method #{met}"
-      end
-    end
-
-    def set_queue
-      @queue = Orchestration::Queue.new
-    end
-
     # we keep the before update host object in order to compare changes
     def setup_clone
       return if new_record?

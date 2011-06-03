@@ -1,6 +1,7 @@
 class HostsController < ApplicationController
   include Foreman::Controller::HostDetails
   include Foreman::Controller::AutoCompleteSearch
+  include Foreman::Controller::Conflict if SETTINGS[:unattended]
 
   # actions which don't require authentication and are always treated as the admin user
   ANONYMOUS_ACTIONS=[ :query, :externalNodes, :lookup ]
@@ -85,10 +86,29 @@ class HostsController < ApplicationController
     if @host.save
       process_success :success_redirect => @host
     else
-      load_vars_for_ajax
-      process_error
+      process_error_or_overwrite_conflict
     end
   end
+
+  # Called when a Create or Update operation fails part way through. These operations determine
+  # that the only errors that are blocking processing are network conflicts and prompt the user
+  # with an option to overwrite the already present network database entries
+  def process_error_or_overwrite_conflict
+    respond_to do |format|
+      format.json {process_error}
+      format.yaml {process_error}
+      format.html {
+        load_vars_for_ajax
+        if SETTINGS[:unattended] and @host.netdb_conflicts_only?
+          session[:conflicts] = ConflictList.new @host
+          render  :partial => "fix_netdb_confirmation", :locals => {:host => @host, :collision => session[:conflicts]}, :layout => true
+        else
+          process_error
+        end
+      }
+    end
+  end
+  private :process_error_or_overwrite_conflict
 
   def edit
     load_vars_for_ajax
@@ -99,8 +119,7 @@ class HostsController < ApplicationController
     if @host.update_attributes(params[:host])
       process_success :success_redirect => @host
     else
-      load_vars_for_ajax
-      process_error
+      process_error_or_overwrite_conflict
     end
   end
 

@@ -1,0 +1,132 @@
+<% title "#{params[:action].capitalize} Host" %>
+<% unless (hosts = collision.hosts - [@host.name]).empty? %>
+  <fieldset>
+    <legend>Foreman hosts in conflict</legend>
+    The values that have been chosen are currently in use by Foreman hosts and you will have to delete these before you may continue.
+    <table>
+      <tr>
+        <th>Name</th>
+        <th>Owner</th>
+      </tr>
+      <% for foreman_host in hosts.map{|n| Host.find_by_name n} %>
+      <tr>
+          <td><%= foreman_host.name %></td>
+          <td><%= foreman_host.owner %></td>
+      </tr>
+      <% end %>
+    </table>
+  </fieldset>
+
+<% else %>
+  <% form_tag overwrite_hosts_path do %>
+    <%= hidden_field_tag "remove[check]", collision.check %>
+
+    <fieldset>
+      <legend><H2>Confirmation required&nbsp;</H2></legend>
+      To complete this operation Foreman will need to modify some Network Database entries that are currently in use. <br/>
+      <div style="color:LightGreen">These entries exist but already have the intended value.</div>
+
+      <div style="color:OrangeRed">Theses entries indicate a true conflict where the contents will be erased or replaced with a new value.</div>
+
+      <div>
+        <table>
+          <tr>
+            <th>Host</th>
+            <th colspan="4" style="text-align:left;">Preexisting network values</th>
+          <tr>
+            <th>values</th>
+            <th>DNS Name conflicts</th>
+            <th>DNS Address conflicts</th>
+            <th>DHCP conflicts</th>
+          </tr>
+          <tr>
+            <td>
+              Name: <%= host.name %>
+              <br/>
+              IP:   <%= host.ip %>
+              <br/>
+              MAC:  <%= host.mac %>
+              <br/>
+            </td>
+            <td>
+              <% if collision.dns_name_entry %>
+                <div style="color:<%= collision.dns_name_collision ? "OrangeRed" : "LightGreen"  %>">
+                  The DNS name conflicts with A record<br/>
+                  Name: <%= host.name %>
+                  <br/>
+                  IP: <%= collision.dns_name_entry %>
+                  <br/>
+                </div>
+              <% else %>
+              ----------
+              <% end -%>
+              <% if collision.dns_name_secondary_entry %>
+                and</br>
+                <div style="color:<%= collision.dns_name_secondary_collision ? "OrangeRed" : "LightGreen"  %>">
+                  the corresponding PTR record<br/>
+                  IP: <%= collision.dns_name_entry %>
+                  <br/>
+                  Name: <%= collision.dns_name_secondary_entry %>
+                  <br/>
+                </div>
+              <% end -%>
+            </td>
+            <td>
+              <% if collision.dns_ip_entry %>
+                <div style="color:<%= collision.dns_ip_collision ? "OrangeRed" : "LightGreen" %>">
+                  The DNS address conflicts with PTR record<br/>
+                  IP: <%= host.ip %>
+                  <br/>
+                  Name: <%= collision.dns_ip_entry %>
+                  <br/>
+                </div>
+              <% else %>
+              ----------
+              <% end -%>
+              <% if collision.dns_ip_secondary_entry %>
+                and<br/>
+                <div style="color:<%= collision.dns_ip_secondary_collision ? "OrangeRed" : "LightGreen" %>">
+                  the corresponding A record<br/>
+                  Name: <%= collision.dns_ip_entry %>
+                  <br/>
+                  IP: <%= collision.dns_ip_secondary_collision %>
+                  <br/>
+                </div>
+              <% end -%>
+            </td>
+            <td>
+              <% if collision.dhcp_mac_ip_entry -%>
+                <div style="color:<%= collision.dhcp_mac_ip_collision ? "OrangeRed" : "LightGreen"  %>">
+                  There is a DHCP entry using this MAC address<br/>
+                  MAC: <%= host.mac %>
+                  <br/>
+                  IP: <%= collision.dhcp_mac_ip_entry %>
+                  <br/>
+                  Hostname: <%= collision.dhcp_mac_ip.colliding_host || "unknown" %>
+                  <br/>
+                </div>
+              <% else %>
+              ----------
+              <% end %>
+              <% if collision.dhcp_ip_mac_entry -%>
+                <div style="color:<%= collision.dhcp_ip_mac.conflicting? ? "OrangeRed" : "LightGreen"  %>">
+                  There is a DHCP entry using this IP address<br/>
+                  IP: <%= host.ip %>
+                  <br/>
+                  MAC: <%= collision.dhcp_ip_mac_entry %>
+                  <br/>
+                  Hostname: <%= collision.dhcp_mac_ip.colliding_host || "unknown"%>
+                  <br/>
+                </div>
+              <% else %>
+              ----------
+              <% end %>
+            </td>
+          </tr>
+        </table>
+      </div>
+    </fieldset>
+    <%= submit_tag "Overwrite these entries and continue" %>
+    <%= link_to "Cancel", :back, :type => "cancel" %>
+  <% end %>
+<% end %>

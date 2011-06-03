@@ -1,6 +1,9 @@
 # Filters added to this controller apply to all controllers in the application.
 # Likewise, all the methods added will be available for all controllers.
-
+if SETTINGS[:unattended]
+  require_dependency 'conflict'
+  require_dependency 'conflicts/dns'
+end
 class ApplicationController < ActionController::Base
   protect_from_forgery # See ActionController::RequestForgeryProtection for details
   rescue_from ActionController::RoutingError, :with => :no_puppetclass_documentation_handler

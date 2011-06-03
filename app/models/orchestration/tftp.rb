@@ -18,7 +18,6 @@ module Orchestration::TFTP
       !subnet.nil? and !subnet.tftp.nil? and !subnet.tftp.url.empty?
     end
 
-    protected
     def initialize_tftp
       return unless tftp?
       @tftp = ProxyAPI::TFTP.new :url => subnet.tftp.url,
@@ -27,10 +26,11 @@ module Orchestration::TFTP
       failure "Failed to initialize the TFTP proxy: #{e}"
     end
 
+    protected
     # Adds the host to the forward and reverse TFTP zones
     # +returns+ : Boolean true on success
     def setTFTP
-      logger.info "Add the TFTP configuration for #{name}"
+      logger.info "{#{User.current.login}}Add the TFTP configuration for #{name}"
       tftp.set mac, :pxeconfig => generate_pxe_template
     rescue => e
       failure "Failed to set TFTP: #{proxy_error e}"
@@ -39,7 +39,7 @@ module Orchestration::TFTP
     # Removes the host from the forward and reverse TFTP zones
     # +returns+ : Boolean true on success
     def delTFTP
-      logger.info "Delete the TFTP configuration for #{name}"
+      logger.info "{#{User.current.login}}Delete the TFTP configuration for #{name}"
       tftp.delete mac
     rescue => e
       failure "Failed to delete TFTP: #{proxy_error e}"
@@ -82,7 +82,7 @@ module Orchestration::TFTP
       @initrd = os.initrd(arch)
       pxe_render configTemplate({:kind => os.template_kind}).template
     rescue => e
-      failure "Failed to generate #{os.template_kind} template: #{e}"
+      failure "Failed to generate #{os.template_kind} template: #{e}", e.backtrace
     end
 
     def queue_tftp

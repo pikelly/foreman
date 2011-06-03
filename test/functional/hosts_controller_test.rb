@@ -10,7 +10,11 @@ class HostsControllerTest < ActionController::TestCase
 
   def test_create_invalid
     Host.any_instance.stubs(:valid?).returns(false)
-    post :create, {}, set_session_user
+    Host.any_instance.stubs(:domain).returns(domains(:yourdomain))
+    Host.any_instance.stubs(:subnet).returns(subnets(:one))
+    Host.any_instance.stubs(:interrogate_dns).returns({})
+    Host.any_instance.stubs(:interrogate_dhcp).returns({})
+    post :create, {:host => hosts(:one).attributes}, set_session_user
     assert_template 'new'
   end
 
@@ -106,6 +110,10 @@ class HostsControllerTest < ActionController::TestCase
 
   def test_update_invalid
     Host.any_instance.stubs(:valid?).returns(false)
+    Host.any_instance.stubs(:domain).returns(domains(:yourdomain))
+    Host.any_instance.stubs(:subnet).returns(subnets(:one))
+    Host.any_instance.stubs(:interrogate_dns).returns({})
+    Host.any_instance.stubs(:interrogate_dhcp).returns({})
     put :update, {:id => Host.first.name}, set_session_user
     assert_template 'edit'
   end

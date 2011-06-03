@@ -1,0 +1,38 @@
+<% form_tag repair_host_path do %>
+  <% if collision.no_issues? -%>
+    <h3 id="no-issues" style="text-align:center;">No issues detected</h3>
+  <% end %>
+  <% if (extra = collision.hosts - [@host.name]).count > 0  %>
+    This host claims DNS or DHCP entries belonging to other Foreman managed hosts. These hosts need to be removed before
+    this host can be repaired.<br/>
+    The hosts are <%= extra.to_sentence %>
+    <p/><hr><p/>
+    <%= javascript_tag "disable_repair_button"%>
+  <% end %>
+  <%= hidden_field_tag "remove[check]", collision.check %>
+
+    <table>
+      <tr><td colspan="2">The following two records, an 'A' and a 'PTR',  should be registered with the DNS.</td></tr>
+      <tr>
+        <%= dns_host_entry @host, collision %>
+      </tr>
+      <tr><td colspan="2">The name or address are in use, as shown below.</td></tr>
+      <tr>
+        <%= dns_collision_entries @host, collision %>
+      </tr>
+    </table>
+    Key: <span style="color:CornflowerBlue ;">(A)Address records</span> : <span style="color:BurlyWood">(PTR) Pointer records</span>
+    <p/><hr><p/>
+
+    <table>
+      <tr><td colspan="2">The following DHCP entry with this IP and MAC should be registered with DHCP</td></tr>
+      <tr>
+        <%= dhcp_host_entry @host, collision %>
+      </tr>
+      <tr><td colspan="2">The IP or MAC are in use, as shown below.</td></tr>
+      <tr valign="top">
+        <%= dhcp_collision_entries @host, collision %>
+      </tr>
+    </table>
+    Key: <span style="color:BurlyWood ">Lookup via MAC</span> : <span style="color:CornflowerBlue ;">Lookup via IP</span>
+<% end %>

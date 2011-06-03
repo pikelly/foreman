@@ -1,3 +1,4 @@
+<%= javascript "host_conflicts" %>
 <% form_for @host do |f| %>
   <%= f.error_messages %>
 
@@ -70,5 +71,5 @@
     </div>
   <% end -%>
 
-  <%= f.submit "Submit" %>
+  <%= f.submit "Submit", :id => "main-form-submit" %>
 <% end %>

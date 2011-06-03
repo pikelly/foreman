@@ -20,6 +20,7 @@ class Host < Puppet::Rails::Host
 
   include Hostext::Search
   include HostCommon
+  include HostTemplateHelpers
 
   class Jail < Safemode::Jail
     allow :name, :diskLayout, :puppetmaster, :operatingsystem, :os, :environment, :ptable, :hostgroup, :url_for_boot,
@@ -111,7 +112,7 @@ class Host < Puppet::Rails::Host
     validates_uniqueness_of  :sp_mac, :allow_nil => true, :allow_blank => true
     validates_uniqueness_of  :sp_name, :sp_ip, :allow_blank => true, :allow_nil => true
     validates_format_of      :sp_name, :with => /.*-sp/, :allow_nil => true, :allow_blank => true
-    validates_presence_of    :architecture_id, :operatingsystem_id, :if => Proc.new {|host| host.managed}
+    validates_presence_of    :architecture_id, :operatingsystem_id, :subnet_id, :if => Proc.new {|host| host.managed}
     validates_presence_of    :domain_id
     validates_presence_of    :mac, :unless => Proc.new { |host| host.hypervisor? or !host.managed  }
 
@@ -525,6 +526,27 @@ class Host < Puppet::Rails::Host
 
   def jumpstart?
     operatingsystem.family == "Solaris" and architecture.name =~/Sparc/i rescue false
+  end
+  # ensure that host name is fqdn
+  # if the user input short name, the domain name will be appended
+  # this is done to ensure compatibility with puppet storeconfigs
+  def normalize_hostname
+    # no hostname was given or a domain was selected, since this is before validation we need to ignore
+    # it and let the validations to produce an error
+    return if name.empty?
+
+    if domain.nil? and name.match(/\./)
+      # try to assign the domain automatically based on our existing domains from the host FQDN
+      self.domain = Domain.all.select{|d| name.match(d.name)}.first rescue nil
+    else
+      # if our host is in short name, append the domain name
+      self.name += ".#{domain}" unless name =~ /.#{domain}$/i
+    end
+  end
+
+  # Determines if all the host's errors are due to network database issues
+  def netdb_conflicts_only?
+    !errors.empty? and errors.full_messages.grep(/CONFLICT/) == errors.full_messages
   end
 
   def set_hostgroup_defaults

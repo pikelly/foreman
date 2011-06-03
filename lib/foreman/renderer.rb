@@ -11,7 +11,15 @@ module Foreman
     end
     #returns the URL for Foreman Built status (when a host has finished the OS installation)
     def foreman_url(action = "built")
-      url_for :only_path => false, :controller => "unattended", :action => action
+      args = {:only_path => false, :controller => "unattended", :action => action}
+      unless self.instance_of? ActionView::Base
+        # If we are being evaluated via an internal call then add the host and port
+        # If we are being called via the web interface then we do not need to do this
+        host, port = request_url.match(/([^:]+):?(.+)?/)[1,2]
+        args.merge! :host => host
+        args.merge! :port => port if port
+      end
+      url_for args
     end
 
     # provide embedded snippets support as simple erb templates
