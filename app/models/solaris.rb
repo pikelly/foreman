@@ -37,9 +37,13 @@ class Solaris < Operatingsystem
     pxedir + "/" + PXEFILES[file]
   end
 
-  def boot_filename
+  def boot_filename host
     #handle things like gpxelinux/ gpxe / pxelinux here
-    "Solaris-5.#{minor}-#{release_name}-pxegrub"
+    if host.jumpstart?
+      "Solaris-#{major}.#{minor}-#{release_name}-#{host.model.hardware_model}-inetboot"
+    else
+      "Solaris-5.#{minor}-#{release_name}-pxegrub"
+    end
   end
 
   def pxeconfig_default

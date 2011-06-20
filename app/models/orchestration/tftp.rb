@@ -93,6 +93,7 @@ module Orchestration::TFTP
 
     def queue_tftp
       return unless tftp? and errors.empty?
+      return true if jumpstart? # Jumpstart builds do not require any tftp services
       new_record? ? queue_tftp_create : queue_tftp_update
     end
 
@@ -108,7 +109,7 @@ module Orchestration::TFTP
       set_tftp = false
       if build?
         # we switched to build mode
-        set_fftp = true unless old.build?
+        set_tftp = true unless old.build?
         # medium or arch changed
         set_tftp = true if old.medium != medium or old.arch != arch
         # operating system changed

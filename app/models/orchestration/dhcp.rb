@@ -4,7 +4,7 @@ module Orchestration::DHCP
     base.class_eval do
       attr_reader :dhcp
       after_validation  :initialize_dhcp, :queue_dhcp
-      before_destroy    :initialize_dhcp, :queue_dhcp_destory
+      before_destroy    :initialize_dhcp, :queue_dhcp_destroy
       validate :ip_belongs_to_subnet?
     end
   end
@@ -23,6 +23,7 @@ module Orchestration::DHCP
       # i.e. management port is not on the same subnet
       sub ||= subnet
       @dhcp = ProxyAPI::DHCP.new(:url => sub.dhcp.url)
+      @resolver ||= Resolv::DNS.new :search => domain.name, :nameserver => domain.nameservers, :ndots => 1
     rescue => e
       failure "Failed to initialize the DHCP proxy: #{e}"
     end
@@ -62,8 +63,12 @@ module Orchestration::DHCP
     # +returns+ : Boolean true on success
     def setDHCP
       logger.info "{#{User.current.login}}Add a DHCP reservation for #{name}/#{ip}"
-      dhcp.set subnet.network,({:name => name, :filename => operatingsystem.boot_filename,
-                               :ip => ip, :nextserver => boot_server, :mac => mac})
+      dhcp_attr = {:name => name, :filename => operatingsystem.boot_filename(self),
+                   :ip => ip, :nextserver => boot_server, :mac => mac, :hostname => name}
+
+      dhcp_attr.merge! @jumpstart_params if jumpstart? and !(@jumpstart_params = jumpstart_params).empty?
+
+      dhcp.set subnet.network, dhcp_attr
     rescue => e
       failure "Failed to set the DHCP record: #{proxy_error e}"
     end
@@ -130,10 +135,30 @@ module Orchestration::DHCP
                        :action => [old, :delSPDHCP])
         end
       end
+      # Jumpstart builds are much more sensitive to host attribute changes
+      if jumpstart? and update == false # No point in doing this if we are already scheduled to delete
+        if (current = dhcp.record subnet.network, mac)
+          jpath       = operatingsystem.jumpstart_path medium, domain
+          ipath       = operatingsystem.interpolate_medium_vars(medium.media_dir, architecture.name, operatingsystem)
+          # The vendor class may be a gini-compatible abbreviated vendor name
+          actual_vendor = current.keys.find{|k| k =~ /^</}.match(/^<([^>]+)>/)[1] rescue model.vendor_class
+          if current["<#{actual_vendor}>14"].nil? or current["<#{actual_vendor}>14"] != jpath or
+             current["<#{actual_vendor}>4"].nil?  or current["<#{actual_vendor}>4"]  !~ /#{ipath}/   or
+             current["<#{actual_vendor}>3"].nil?  or current["<#{actual_vendor}>3"]  != medium.media_host
+            old.initialize_dhcp if old.dhcp.nil? and old.dhcp?
+            queue.create(:name => "DHCP Settings for #{old}", :priority => 5,
+                       :action => [old, :delDHCP])
+            update = true
+          end
+        else
+          # We could not find a DHCP entry so create one
+          update = true
+        end
+      end
       queue_dhcp_create if update
     end
 
-    def queue_dhcp_destory
+    def queue_dhcp_destroy
       return unless dhcp? and errors.empty?
       queue.create(:name => "DHCP Settings for #{self}", :priority => 5,
                    :action => [self, :delDHCP])
@@ -154,5 +179,25 @@ module Orchestration::DHCP
       # we let other validations handle that
     end
 
+    def jumpstart_params
+      # root server and install server are always the same under Foreman
+      server_name = medium.media_host
+      server_ip   = @resolver.getaddress(server_name).to_s
+      jpath       = operatingsystem.jumpstart_path medium, domain
+      ipath       = operatingsystem.interpolate_medium_vars(medium.media_dir, architecture.name, operatingsystem)
+
+      return failure "Host's operating system has an unknown vendor class" unless (vendor = model.vendor_class)
+
+      {
+      "<#{vendor}>root_server_ip"        => server_ip,                                                # 172.29.216.241
+      "<#{vendor}>root_server_hostname"  => server_name,                                              # s02
+      "<#{vendor}>root_path_name"        => "#{ipath}/Solaris_#{operatingsystem.minor}/Tools/Boot", # /vol/s02/solgi_5.10/sol10_hw0910/Solaris_10/Tools/Boot
+      "<#{vendor}>install_server_ip"     => server_ip,                                                # 172.29.216.241
+      "<#{vendor}>install_server_name"   => server_name,                                              # s02
+      "<#{vendor}>install_path"          => ipath,                                                  # /vol/s02/solgi_5.10/sol10_hw0910
+      "<#{vendor}>sysid_server_path"     => "#{jpath}/sysidcfg/sysidcfg_primary",                     # 172.29.216.241:/vol/s02/jumpstart/sysidcfg/sysidcfg_primary
+      "<#{vendor}>jumpstart_server_path" => jpath,                                                    # 172.29.216.241:/vol/s02/jumpstart
+      }
+    end
   end
 end
