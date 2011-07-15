@@ -68,8 +68,8 @@ Foreman::AccessControl.map do |map|
 
   map.security_block :hosts do |map|
     map.permission :view_hosts,    {:hosts => [:index, :show, :errors, :active, :out_of_sync, :disabled], :dashboard => [:OutOfSync, :errors, :active]}
-    map.permission :create_hosts,  {:hosts => [:new, :create, :clone]}
-    map.permission :edit_hosts,    {:hosts => [:edit, :update, :multiple_actions, :reset_multiple,
+    map.permission :create_hosts,  {:hosts => [:new, :create, :clone, :fix_netdb, :overwrite]}
+    map.permission :edit_hosts,    {:hosts => [:edit, :update, :multiple_actions, :reset_multiple, :compare, :repair,
                                       :select_multiple_hostgroup, :select_multiple_environment, :submit_multiple_disable,
                                       :multiple_parameters, :multiple_disable, :multiple_enable, :update_multiple_environment,
                                       :update_multiple_hostgroup, :update_multiple_parameters, :toggle_manage]}

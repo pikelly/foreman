@@ -1,11 +1,32 @@
-class Collision
+# A collision object is generated when a compare(repair) is performed, or a create/update fails.
+# It represents a comparison of the host's attributes and the contents of the DNS and DHCP network databases.
+# When a repair operation has been requested then we know that the host already exists and should have all
+# netdb entries present. This is flagged by repairing == true. Conversely, if we are being called as part of
+# a create/update operation then we know that all entries should be cleared as we are intending to create them.
+# This is flagged by clearing? == true
+#
+# DNS Collisions and Omissions
+# A host's name is in collision if we can nslookup name
+# A host's ip   is in collision if we can nslookup ip
+# If we were able to lookup the host's name then we were given the ip address that this returned. If this address
+# can be looked up then we have a secondary name collision. Following these secondary collisions ensures that we
+# do not leave any dangling A records if we delete a name, and the same logic goes for a secondary ip collision
+#
+# Query structure dns_<keyType>_{entry,collision}
+# E.G. dns_ip_entry is the hostname that is returned when dns is queried for this host's ip
+# E.G. dns_ip_collision is the hostname that is returned when the dns entry does not match this hosts name OR false
+# Query structure dhcp_<keyType>_<returnType>_{entry,collision}
+# E.G. dhcp_mac_ip_entry is the ip that is retrieved from the DHCP entry that was looked up via host's MAC address
+#
+
+class Hostext::Collision
   # TODO: Use method_missing to rationalize this class
   attr_accessor :host, :dns, :dhcp
   attr_reader :dns_ip_missing, :dns_name_missing
-  attr_reader :dhcp_entry_missing, :dhcp_entry_broken
+  attr_reader :dhcp_entry_missing
   attr_reader :dns_ip_entry_host, :dns_name_entry_host
   attr_reader :dns_ip_secondary_entry_host, :dns_name_secondary_entry_host
-  attr_reader :dhcp_mac_entry_host, :dhcp_ip_entry_host
+  attr_reader :dhcp_mac_entry_host
 
   attr_reader :check, :repairing
   @@attribute_map = {"12" => "name"}
@@ -13,22 +34,21 @@ class Collision
   # It is not good practice to store an ActiveRecord in the session so use our own mini host
   class Host < OpenStruct;   end
 
+  # Create a new Collision
+  # [+host+]: the AR host record
+  # [+dns+] : Hash containing DNS entries
+  # [+DHCP+]: Hash containing dhcp options for this mac address
   def initialize host, dns, dhcp
     @host  = Host.new host.attributes
     @dns   = dns
     @dhcp  = dhcp
     @check = rand 10000
     @repairing = false
-    @dns_ip_missing = @dns_name_missing = @dhcp_entry_missing = @dhcp_entry_broken = false
-
-    # Remove entries where the resource was not found
-    @dhcp.keys.each{|k| @dhcp.delete k unless @dhcp[k]}
+    @dns_ip_missing = @dns_name_missing = @dhcp_entry_missing= false
 
     # Convert DHCP attribute values into names
-    for direction in @dhcp.values
-      for key in @@attribute_map.keys
-        direction[@@attribute_map[key]] = direction.delete key if direction.has_key? key
-      end
+    for key in @@attribute_map.keys
+      dhcp[@@attribute_map[key]] = dhcp.delete key if dhcp.has_key? key
     end
   end
 
@@ -40,21 +60,22 @@ class Collision
     dhcp_mac_ip_entry and dhcp_mac_ip_entry != host.ip ? dhcp_mac_ip_entry : false
   end
   def dhcp_mac_ip_entry
-    return false unless dhcp[host.mac]
-    dhcp[host.mac]["ip"]
+    dhcp["ip"] ? dhcp["ip"] : false
   end
 
   def dhcp_mac_ip_collision_info
-    return false unless dhcp[host.mac]
+    return false unless dhcp_mac_ip_collision
     hostname(host.mac) + " owned by " + dhcp_mac_owner
   end
 
+  # The hosts that we overlap.
   def hosts
-    [foreman_host(:dhcp, :mac_ip), foreman_host(:dhcp, :ip_mac),
+    [foreman_host(:dhcp, :mac_ip),
      foreman_host(:dns, :name), foreman_host(:dns, :name_secondary),
      foreman_host(:dns, :ip),   foreman_host(:dns, :ip_secondary)].compact.sort.uniq
   end
 
+  # The hosts that we overlap but not including self.
   def collision_hosts
     host.marshal_dump[:id] ? hosts - [::Host.find host.marshal_dump[:id]] : hosts
   end
@@ -68,6 +89,10 @@ class Collision
     kind
   end
 
+  # Returns the AR Host corresponding to the <db>_<kind>_entry information OR nil
+  # E.G. foreman_host(:dns, :name)
+  #   lookup the entry => Host.find_by_ip dns_name_entry
+  #   Also does some caching for performance
   def foreman_host db, kind
     db   = db.to_s
     kind = kind.to_s
@@ -76,35 +101,22 @@ class Collision
     (eval "@#{db}_#{kind}_entry_host ||= ::Host.find_by_#{inv_kind}(#{db}_#{kind}_entry)") || nil
   end
 
+  # Returns the Foreman owner of a host using the <db>_<kind>_entry
   def owner db, kind
     existing_host = foreman_host db, kind
     existing_host ? existing_host.owner.name : "unknown"
   end
 
-  def hostname ip_or_mac
-    hname = dhcp[ip_or_mac].try(:[], "name")
+  def hostname mac
+    hname = dhcp[mac].try(:[], "name")
     hname ? hname : "Unnamed host"
   end
 
   def dhcp_mac_owner; owner :dhcp, :mac_ip; end
-  def dhcp_ip_owner;  owner :dhcp, :ip_mac;  end
   def dns_ip_owner;   owner :dns,  :ip;  end
   def dns_name_owner; owner :dns,  :name; end
   def dns_ip_secondary_owner;   owner :dns,  :ip_secondary;  end
   def dns_name_secondary_owner; owner :dns,  :name_secondary; end
-
-  def dhcp_ip_mac_collision
-    dhcp_ip_mac_entry and dhcp_ip_mac_entry != host.mac ? dhcp_ip_mac_entry : false
-  end
-  def dhcp_ip_mac_entry
-    return false unless dhcp[host.ip]
-    dhcp[host.ip]["mac"]
-  end
-
-  def dhcp_ip_mac_collision_info
-    return false unless dhcp[host.ip]
-    hostname(host.ip) + " owned by " + dhcp_ip_owner
-  end
 
   # The hostname of the machine that is using our desired IP address
   def dns_ip_collision
@@ -142,24 +154,22 @@ class Collision
     dns[dns[host.name]]
   end
 
+  # Are there any DNS collisions?
   def dns_collisions?
     dns_ip_collision or dns_ip_secondary_collision or dns_name_collision or dns_name_secondary_collision
   end
 
+  # Are there any DHCP collisions?
   def dhcp_collisions?
-    dhcp_ip_mac_collision or dhcp_mac_ip_collision
+    dhcp_mac_ip_collision
   end
 
   def empty?
     !dns? and !dhcp?
   end
 
-  def dhcp_same_entry?
-    dhcp[host.ip]["name"] == dhcp[host.mac]["name"] and host.ip == dhcp[host.mac]["ip"] and host.mac == dhcp[host.ip]["mac"]
-  end
-
   def no_issues?
-    !dhcp_collisions? and !dns_collisions? and !dns_name_missing and !dns_ip_missing and !dhcp_entry_missing and !dhcp_entry_broken
+    !dhcp_collisions? and !dns_collisions? and !dns_name_missing and !dns_ip_missing and !dhcp_entry_missing
   end
 
   # This is called on validation so we calculate missing and malformed entries
@@ -167,7 +177,6 @@ class Collision
     @dns_name_missing   = dns[host.name] == false
     @dns_ip_missing     = dns[host.ip]   == false
     @dhcp_entry_missing = dhcp[host.mac] == nil
-    @dhcp_entry_broken  = (dhcp[host.mac] and dhcp[host.mac]["ip"] != host.ip)
     @repairing          = true
   end
 end

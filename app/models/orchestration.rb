@@ -6,6 +6,7 @@ module Orchestration
     base.send :include, InstanceMethods
     base.class_eval do
       attr_reader :queue, :old
+      attr_accessor :test_process_code
       # stores actions to be performed on our proxies based on priority
       before_validation :set_queue
       before_validation :setup_clone
@@ -74,7 +75,7 @@ module Orchestration
     # if any of them fail, it rollbacks all completed tasks
     # in order not to keep any left overs in our proxies.
     def process q
-      return true if Rails.env == "test"
+      return true if Rails.env == "test" and !test_process_code
       # queue is empty - nothing to do.
       return if q.empty?
 

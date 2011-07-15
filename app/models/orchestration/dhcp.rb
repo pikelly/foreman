@@ -2,7 +2,7 @@ module Orchestration::DHCP
   def self.included(base)
     base.send :include, InstanceMethods
     base.class_eval do
-      attr_reader :dhcp
+      attr_accessor :dhcp
       after_validation  :initialize_dhcp, :queue_dhcp
       before_destroy    :initialize_dhcp, :queue_dhcp_destory
       validate :ip_belongs_to_subnet?
@@ -28,29 +28,23 @@ module Orchestration::DHCP
     end
 
     # Retrieves the DHCP entry for this host via a lookup on the MAC
-    # and optionally the ip
     # Returns: Hash  Example {
     #   "mac"       :"22:33:44:55:66:11"
     #   "nextServer":"192.168.122.1"
     #   "title"     :"some.host.name"
     #   "filename"  :"pxelinux.0"
     #   "ip"        :"192.168.122.4"}
-    # or an array of two hashes
-    def getDHCP both=false
+    def getDHCP
       logger.info "Query a DHCP reservation for #{name}/#{mac}"
-      via_mac = dhcp.record subnet.network, mac
-      return via_mac unless both
-      logger.info "Query a DHCP reservation for #{name}/#{ip}"
-      via_ip = dhcp.record subnet.network, ip
-      return via_mac, via_ip
+      dhcp.record subnet.network, mac
     rescue => e
       failure "Failed to read the DHCP record: #{proxy_error e}"
     end
 
     # Deletes the DHCP entry for this host
-    def delDHCP mac_or_ip=mac
-      logger.info "{#{User.current.login}}Delete the DHCP reservation for #{name}/#{ip}"
-      dhcp.delete subnet.network, mac_or_ip
+    def delDHCP
+      logger.info "{#{User.current.login}}Delete the DHCP reservation for #{name}/#{mac}"
+      dhcp.delete subnet.network, mac
     rescue => e
       failure "Failed to delete the DHCP record: #{proxy_error e}"
     end
@@ -84,13 +78,8 @@ module Orchestration::DHCP
     end
 
     def interrogate_dhcp
-      collisions = {}
-
-      entry_via_mac, entry_via_ip = getDHCP(true)
-      collisions[mac] = entry_via_mac if entry_via_mac
-      collisions[ip]  = entry_via_ip  if entry_via_ip
-
-      collisions
+      options = getDHCP
+      options ? options : {}
     rescue => e
       failure "Failed to query the DHCP: #{e}"
     end
@@ -115,7 +104,8 @@ module Orchestration::DHCP
       return bs unless bs.blank?
       failure "Unable to determine the host's boot server. The DHCP smart proxy failed to provide this information and this subnet is not provided with TFTP services."
     rescue => e
-      failure "Failed to detect boot server: #{e}"
+      failure "Failed to retrieve boot server from TFTP server: #{e}"
+      raise
     end
 
     def queue_dhcp
@@ -170,6 +160,16 @@ module Orchestration::DHCP
     rescue => e
       # probably an invalid ip / subnet were entered
       # we let other validations handle that
+    end
+
+    def dhcp_clone options
+      h = self.clone
+      h.dhcp = dhcp
+      for key, value in options
+        h.send "#{key}=",  value
+      end
+      # We do not save!
+      h
     end
 
   end

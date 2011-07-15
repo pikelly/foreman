@@ -66,8 +66,7 @@ module ConflictsHelper
   end
 
   def dhcp_collision_entries host, collision
-    content_tag(:td, dhcp_mac_collision(host, collision)) +
-    content_tag(:td, dhcp_ip_collision(host, collision))
+    content_tag(:td, dhcp_mac_collision(host, collision))
   end
 
   def dhcp_mac_collision host, collision
@@ -75,14 +74,6 @@ module ConflictsHelper
       legend("dhcp_mac", collision.dhcp_mac_ip_entry) +
       macrec(host.mac, collision.dhcp_mac_ip_entry) +
       (collision.dhcp_mac_ip_collision_info ? content_tag(:ul, content_tag(:li, collision.dhcp_mac_ip_collision_info, :style => "color:BurlyWood ;")) : "")
-    end
-  end
-
-  def dhcp_ip_collision host, collision
-    content_tag(:fieldset) do
-      legend("dhcp_ip", collision.dhcp_ip_mac_entry) +
-      iprec(host.ip, collision.dhcp_ip_mac_entry) +
-      (collision.dhcp_ip_mac_collision_info ? content_tag(:ul, content_tag(:li, collision.dhcp_ip_mac_collision_info, :style => "color:CornflowerBlue ;")) : "")
     end
   end
 

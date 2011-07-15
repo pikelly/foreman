@@ -5,7 +5,8 @@ module Orchestration::DNS
   def self.included(base)
     base.send :include, InstanceMethods
     base.class_eval do
-      attr_reader :dns, :resolver
+      attr_reader :resolver
+      attr_accessor :dns
       after_validation :initialize_dns, :validate_dns, :queue_dns
       before_destroy   :initialize_dns, :queue_dns_destroy
     end
@@ -20,7 +21,7 @@ module Orchestration::DNS
     protected
 
     def initialize_dns
-      return false unless dns?
+      return unless dns?
       @dns      ||= ProxyAPI::DNS.new(:url => domain.dns.url )
       @resolver ||= Resolv::DNS.new :search => domain.name, :nameserver => domain.nameservers, :ndots => 1
       @dns and @resolver
@@ -74,7 +75,6 @@ module Orchestration::DNS
     def validate_dns
       return unless dns?
       return if Rails.env == "test"
-      #return true # DEBUGDEBUGDEBUG
       # limit DNS validations to 3 seconds
       Timeout::timeout(3) do
         new_record? ? validate_dns_on_create : validate_dns_on_update
@@ -83,11 +83,15 @@ module Orchestration::DNS
       failure "Timeout querying DNS: #{e}"
     end
 
-    def dns_find key
-      if key =~ /\d{1,3}(\.\d{1,3}){3}/
-        resolver.getname(key).to_s
+    # Looks up the IP or MAC address. Handles the conversion of a DNS miss
+    # exception into false
+    # [+ip_or_name+]: IP or hostname
+    # Returns: String containing the IP or Hostname OR false if there is no entry
+    def dns_find ip_or_name
+      if ip_or_name =~ /\d{1,3}(\.\d{1,3}){3}/
+        resolver.getname(ip_or_name).to_s
       else
-        resolver.getaddress(key).to_s
+        resolver.getaddress(ip_or_name).to_s
       end
     rescue Resolv::ResolvError
       false
@@ -113,21 +117,24 @@ module Orchestration::DNS
 
     def validate_dns_on_create
       if address = dns_find(name)
-        failure "#{name} is already in DNS with an address of #{address}"
+        failure "CONFLICT:#{name} is already in DNS with an address of #{address}"
       end
       if hostname = dns_find(ip)
-        failure "#{ip} is already in the DNS with a name of #{hostname}"
+        failure "CONFLICT:#{ip} is already in the DNS with a name of #{hostname}"
       end
     rescue => e
       failure "Failed to query DNS: #{e}"
     end
 
     def validate_dns_on_update
-      if address = dns_find(name)
-        failure "#{name} DNS record ip #{address} does not match #{ip}" unless address == ip
+      target_name = changes[:name].empty? ? name : changes[:name][1]
+      target_ip   = changes[:ip].empty?   ? ip   : changes[:ip][1]
+      if address = dns_find(target_name)
+        failure "CONFLICT:#{target_name} DNS record ip #{address} does not match #{target_ip}" unless address == target_ip
       end
-      if hostname = dns_find(ip)
-        failure "#{ip} PTR record is #{hostname} expecting #{name}" unless hostname == name
+      target = changes[:ip].empty? ? ip : changes[:ip][1]
+      if hostname = dns_find(target)
+        failure "CONFLICT:#{target} PTR record is #{hostname} but was expecting #{name}" unless hostname == target_name
       end
     rescue => e
       failure "Failed to query DNS: #{e}"
@@ -164,6 +171,16 @@ module Orchestration::DNS
                    :action => [self, :delDNSRecord])
       queue.create(:name => "Remove Reverse DNS record for #{self}", :priority => 1,
                    :action => [self, :delDNSPtr])
+    end
+
+    def dns_clone options
+      h = self.clone
+      h.dns = dns
+      for k,v in options
+        h.send "#{k}=", v
+      end
+      # We do not save!
+      h
     end
 
   end
