@@ -377,7 +377,7 @@ class Host < Puppet::Rails::Host
 
     unless self.model
       modelname = fv(:productname) || fv(:model) || (fv(:is_virtual) == "true" ? fv(:virtual) : nil)
-      self.model = Model.find_or_create_by_name(modelname.strip) if model.nil? and not modelname.empty?
+      self.model = Model.find_or_create_by_name(modelname.strip) unless modelname.empty?
     end
 
     # again we are saving without validations as input is required (e.g. partition tables)
@@ -538,7 +538,7 @@ class Host < Puppet::Rails::Host
   end
 
   def jumpstart?
-    operatingsystem.family == "Solaris" and architecture.name =~/Sparc/i
+    operatingsystem.family == "Solaris" and architecture.name =~/Sparc/i rescue false
   end
 
   private

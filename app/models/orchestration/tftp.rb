@@ -93,7 +93,8 @@ module Orchestration::TFTP
 
     def queue_tftp
       return unless tftp? and errors.empty?
-      return true if jumpstart? # Jumpstart builds do not require any tftp services
+      # Jumpstart builds require only minimal tftp services. They do require a tftp object to query for the boot_server.
+      return true if jumpstart?
       new_record? ? queue_tftp_create : queue_tftp_update
     end
 
