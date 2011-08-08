@@ -87,6 +87,9 @@ module ConflictListHelpers
   def dhcp_mac_ip_entry
     dhcp_mac_ip.try :ip
   end
+  def dhcp_mac_ip_collision
+    dhcp_mac_ip_entry and dhcp_mac_ip_entry != host.ip
+  end
   def dhcp_mac_ip_collision_info
     return false unless dhcp_mac_ip.mac
     dhcp_mac_ip.mac + " owned by " + (dhcp_mac_ip.owner || "unknown")
@@ -97,6 +100,9 @@ module ConflictListHelpers
   end
   def dhcp_ip_mac_entry
     dhcp_ip_mac.try :mac
+  end
+  def dhcp_ip_mac_collision
+    dhcp_ip_mac_entry and dhcp_ip_mac_entry != host.mac
   end
   def dhcp_ip_mac_collision_info
     return false unless dhcp_ip_mac.ip

@@ -12,9 +12,9 @@ class Conflicts::Dhcp < Conflict
     result = []
     for conflict in conflicts
       next unless conflict.instance_of?(Conflicts::Dhcp)
-      next if (mode == :clear and !data.empty?)
+      next if (result.find{|c| c.instance_of?(Conflicts::Dhcp) and conflict.mac == c.mac and conflict.ip == c.ip})
+      next if (mode == :clear and conflict.dhcp_attr.empty?)
       next if (mode == :regenerate and !conflict.missing?)
-      next if (mode == :regenerate and result.find{|c| c.instance_of?(Conflicts::Dhcp)}) # There should only be one regenerate DHCP conflict
       result << conflict
     end
     result

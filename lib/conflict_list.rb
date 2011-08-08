@@ -31,8 +31,6 @@ class ConflictList
   end
 
   def clear
-    return true if none_conflicting
-
     set_queue
 
     cleanup(:clear).each{|c| c.clear queue}
