@@ -36,7 +36,9 @@ module Orchestration
         attr.merge!(:nextserver => next_server) if next_server
 
         if jumpstart?
-          jumpstart_arguments = os.jumpstart_params self
+          raise "Host's operating system has an unknown vendor class" unless (vendor = model.vendor_class and !vendor.empty?)
+
+          jumpstart_arguments = os.jumpstart_params self, vendor
           attr.merge! jumpstart_arguments unless jumpstart_arguments.empty?
         end
         attr
