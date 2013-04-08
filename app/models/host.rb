@@ -648,10 +648,10 @@ class Host < Puppet::Rails::Host
 
   def set_hostgroup_defaults
     return unless hostgroup
-    assign_hostgroup_attributes(%w{environment domain puppet_proxy puppet_ca_proxy})
+    assign_hostgroup_attributes(true, %w{environment domain puppet_proxy puppet_ca_proxy})
     if SETTINGS[:unattended] and (new_record? or managed?)
-      assign_hostgroup_attributes(%w{operatingsystem architecture})
-      assign_hostgroup_attributes(%w{medium ptable subnet}) if capabilities.include?(:build)
+      assign_hostgroup_attributes(false, %w{operatingsystem architecture})
+      assign_hostgroup_attributes(false, %w{medium ptable subnet}) if capabilities.include?(:build)
     end
   end
 
@@ -862,9 +862,9 @@ class Host < Puppet::Rails::Host
     end
   end
 
-  def assign_hostgroup_attributes attrs = []
+  def assign_hostgroup_attributes inherit, attrs = []
     attrs.each do |attr|
-      eval("self.#{attr.to_s} ||= hostgroup.#{attr.to_s}")
+      eval("self.#{attr.to_s} ||= hostgroup.#{"inherited_" if Setting[:inherit_parent_hostgroup_settings] and inherit }#{attr.to_s}")
     end
   end
 

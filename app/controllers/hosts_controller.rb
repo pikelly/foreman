@@ -422,11 +422,14 @@ class HostsController < ApplicationController
       @host.hostgroup = @hostgroup
       @host.compute_resource_id = params[:compute_resource_id] if params[:compute_resource_id].present?
       @host.set_hostgroup_defaults
+      # These need resetting as they may have inherited values from a base hostgroup
+      @environment = @host.environment
+      @domain      = @host.domain
 
 
       render :update do |page|
         [:environment_id, :puppet_ca_proxy_id, :puppet_proxy_id].each do |field|
-          page["*[id*=#{field}]"].val(@hostgroup.send(field)) if @hostgroup.send(field).present?
+          page["*[id*=#{field}]"].val(@host.send(field)) if @host.send(field).present?
         end
         page['#puppet_klasses'].html(render(:partial => 'puppetclasses/class_selection', :locals => {:obj => @host})) if @environment
 

@@ -756,6 +756,19 @@ class HostsControllerTest < ActionController::TestCase
     end
   end
 
+  test "hostgroup_inheritance_works" do
+    @request.env['HTTP_REFERER'] = hosts_path
+    setup_multiple_environments
+    common  = hostgroup(:common)
+    unusual = hostgroup(:unusual)
+    unusual.parent = common # This makes common/unusual
+    post :process_hostgroups, {
+        :hostgroup           => hostgroup(:uncommon),
+        :compute_resource_id => ""
+    }, set_session_user
+    assert_success
+    assert_select host_hostgroup_id, 
+  end
   private
   def initialize_host
     User.current = users(:admin)

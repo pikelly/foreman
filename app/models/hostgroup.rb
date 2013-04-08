@@ -122,6 +122,17 @@ class Hostgroup < ActiveRecord::Base
     read_attribute(:root_pass) || nested_root_pw
   end
 
+  %w{environment domain puppet_proxy puppet_ca_proxy}.each do |attr|
+    eval "
+      def inherited_#{attr}
+        hg = self
+        while hg.#{attr}.nil? and hg.parent
+          hg = hg.parent
+        end
+        hg.#{attr}
+      end
+    "
+  end
   private
 
   def nested_root_pw
